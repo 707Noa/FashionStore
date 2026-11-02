@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/layouts/public-layout/public-layout.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n  background: var(--color-bg);\r\n  min-height: 100vh;\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;AACA,cAAA,IAAA;AACA,cAAA;;",
+  "names": []
+}

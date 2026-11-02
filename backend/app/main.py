@@ -108,6 +108,9 @@ from modules.P6_InnovacionYAnalisis.CU29_ObtenerRecomendacionesIA.router import 
 from modules.P6_InnovacionYAnalisis.CU30_ConsultarReportesIndicadores.router import (
     router as cu30_reportes_router,
 )
+from modules.PK08_OperacionOfflineWebYMovil.CU06_PrepararInformacionOffline.router import (
+    router as cu06_offline_router,
+)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -166,6 +169,7 @@ app.include_router(cu31_comprobante_venta_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu32_promociones_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu29_asistente_ia_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu30_reportes_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu06_offline_router, prefix=settings.API_V1_PREFIX)
 
 # Sirve las imágenes subidas por el Administrador (CU08/CU09) -- ver
 # app/core/image_storage.py. Montado bajo API_V1_PREFIX para que Nginx, que ya

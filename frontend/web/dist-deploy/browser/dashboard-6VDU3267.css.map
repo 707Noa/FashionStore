@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/admin/dashboard/dashboard.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\n.dashboard-grid {\r\n  display: grid;\r\n  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));\r\n  gap: 16px;\r\n}\r\n\r\n.dashboard-card {\r\n  padding: 20px;\r\n\r\n  h3 {\r\n    font-size: 14px;\r\n    font-weight: 600;\r\n    color: var(--color-text);\r\n  }\r\n\r\n  p {\r\n    margin-top: 8px;\r\n    font-size: 12.5px;\r\n    color: var(--color-text-secondary);\r\n  }\r\n}\r\n\r\n.dashboard-hint {\r\n  margin-top: 16px;\r\n  padding: 18px 20px;\r\n\r\n  p {\r\n    font-size: 12.5px;\r\n    color: var(--color-text-secondary);\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAGF,CAAA;AACE,WAAA;AACA,yBAAA,OAAA,QAAA,EAAA,OAAA,KAAA,EAAA;AACA,OAAA;;AAGF,CAAA;AACE,WAAA;;AAEA,CAHF,eAGE;AACE,aAAA;AACA,eAAA;AACA,SAAA,IAAA;;AAGF,CATF,eASE;AACE,cAAA;AACA,aAAA;AACA,SAAA,IAAA;;AAIJ,CAAA;AACE,cAAA;AACA,WAAA,KAAA;;AAEA,CAJF,eAIE;AACE,aAAA;AACA,SAAA,IAAA;;",
+  "names": []
+}

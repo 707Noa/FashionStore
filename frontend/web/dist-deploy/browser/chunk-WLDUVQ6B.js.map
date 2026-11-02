@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/environments/environment.ts"
+  ],
+  "sourcesContent": [
+    "export const environment = {\r\n  production: false,\r\n  apiUrl: 'http://localhost:8000/api/v1',\r\n};\r\n"
+  ],
+  "mappings": ";AAAO,IAAM,cAAc;AAAA,EACzB,YAAY;AAAA,EACZ,QAAQ;AACV;",
+  "names": [],
+  "debugId": "0403b8f0-52e9-514f-a2da-6cf1731c06ee"
+}

@@ -1,0 +1,14 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/features/encargado/inicio/inicio.ts",
+    "src/app/features/encargado/inicio/inicio.html"
+  ],
+  "sourcesContent": [
+    "import { Component, inject } from '@angular/core';\r\nimport { RouterLink } from '@angular/router';\r\nimport { AuthService } from '../../../core/services/auth.service';\r\n\r\n@Component({\r\n  selector: 'app-encargado-inicio',\r\n  imports: [RouterLink],\r\n  templateUrl: './inicio.html',\r\n  styleUrl: './inicio.scss',\r\n})\r\nexport class Inicio {\r\n  private readonly authService = inject(AuthService);\r\n\r\n  protected readonly usuario = this.authService.usuario;\r\n}\r\n",
+    "<section class=\"admin-card welcome\">\r\n  <h3>¡Bienvenido{{ usuario()?.nombre ? ', ' + usuario()!.nombre : '' }}!</h3>\r\n  <p>\r\n    La gestión de stock por sucursal todavía se está preparando. Por ahora puedes\r\n    revisar y actualizar tus datos de contacto en tu perfil.\r\n  </p>\r\n  <a routerLink=\"/mi-perfil\" class=\"btn btn--primary\">Ir a mi perfil</a>\r\n</section>\r\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;AAUM,IAAO,SAAP,MAAO,QAAM;EACA,cAAc,OAAO,WAAW;EAE9B,UAAU,KAAK,YAAY;;qCAHnC,SAAM;EAAA;yEAAN,SAAM,WAAA,CAAA,CAAA,sBAAA,CAAA,GAAA,OAAA,GAAA,MAAA,GAAA,QAAA,CAAA,CAAA,GAAA,cAAA,SAAA,GAAA,CAAA,cAAA,cAAA,GAAA,OAAA,cAAA,CAAA,GAAA,UAAA,SAAA,gBAAA,IAAA,KAAA;AAAA,QAAA,KAAA,GAAA;ACVnB,MAAA,yBAAA,GAAA,WAAA,CAAA,EAAoC,GAAA,IAAA;AAC9B,MAAA,iBAAA,CAAA;AAAmE,MAAA,uBAAA;AACvE,MAAA,yBAAA,GAAA,GAAA;AACE,MAAA,iBAAA,GAAA,mJAAA;AAEF,MAAA,uBAAA;AACA,MAAA,yBAAA,GAAA,KAAA,CAAA;AAAoD,MAAA,iBAAA,GAAA,gBAAA;AAAc,MAAA,uBAAA,EAAI;;;AALlE,MAAA,oBAAA,CAAA;AAAA,MAAA,6BAAA,kBAAA,IAAA,QAAA,GAAA,SAAA,OAAA,IAAA,QAAA,EAAA,SAAA,IAAA,GAAA;;oBDKM,UAAU,GAAA,QAAA,CAAA,mdAAA,EAAA,CAAA;;;sEAIT,QAAM,CAAA;UANlB;uBACW,wBAAsB,SACvB,CAAC,UAAU,GAAC,UAAA;;;;;;;;GAAA,QAAA,CAAA,kZAAA,EAAA,CAAA;;;;6EAIV,QAAM,EAAA,WAAA,UAAA,UAAA,+CAAA,YAAA,GAAA,CAAA;AAAA,GAAA;",
+  "names": [],
+  "debugId": "67475385-c4e6-5dea-9e3b-ded6fa8884c7"
+}

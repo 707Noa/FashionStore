@@ -51,37 +51,51 @@ export interface OfflinePreparacion {
 export class OfflineStorageService {
   private dbName = 'fashionstore_offline';
   private db: IDBDatabase | null = null;
+  private readonly dbReady: Promise<void>;
 
   constructor() {
-    this.initializeDB();
+    this.dbReady = this.initializeDB();
   }
 
-  private initializeDB(): void {
-    const request = indexedDB.open(this.dbName, 1);
+  private initializeDB(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, 1);
 
-    request.onerror = () => {
-      console.error('Error al abrir IndexedDB');
-    };
+      request.onerror = () => {
+        const error = new Error('Error al abrir IndexedDB');
+        console.error(error);
+        reject(error);
+      };
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
 
-      // Crear object stores si no existen
-      if (!db.objectStoreNames.contains('offline_preparacion')) {
-        const preparacionStore = db.createObjectStore('offline_preparacion', { keyPath: 'id' });
-        preparacionStore.createIndex('empresa_sucursal', ['empresa_id', 'sucursal_id'], {
-          unique: true,
-        });
-      }
-    };
+        // Crear object stores si no existen
+        if (!db.objectStoreNames.contains('offline_preparacion')) {
+          const preparacionStore = db.createObjectStore('offline_preparacion', { keyPath: 'id' });
+          preparacionStore.createIndex('empresa_sucursal', ['empresa_id', 'sucursal_id'], {
+            unique: true,
+          });
+          console.log('Object Store offline_preparacion creado');
+        }
+      };
 
-    request.onsuccess = () => {
-      this.db = request.result;
-    };
+      request.onsuccess = () => {
+        this.db = request.result;
+        console.log('IndexedDB inicializado correctamente');
+        resolve();
+      };
+    });
   }
 
   async savePreparacion(preparacion: OfflinePreparacion, empresaId: number): Promise<void> {
-    const db = await this.getDB();
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
     const transaction = db.transaction(['offline_preparacion'], 'readwrite');
     const store = transaction.objectStore('offline_preparacion');
 
@@ -97,17 +111,26 @@ export class OfflineStorageService {
       const request = store.put(dataToStore);
 
       request.onsuccess = () => {
+        console.log(`Preparación guardada: empresa=${empresaId}, sucursal=${preparacion.metadata.sucursal_id}`);
         resolve();
       };
 
       request.onerror = () => {
-        reject(new Error('Error al guardar preparación en IndexedDB'));
+        const error = new Error(`Error al guardar preparación en IndexedDB: ${request.error?.message}`);
+        console.error(error);
+        reject(error);
       };
     });
   }
 
   async getPreparacion(empresaId: number, sucursalId: number): Promise<OfflinePreparacion | null> {
-    const db = await this.getDB();
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
     const transaction = db.transaction(['offline_preparacion'], 'readonly');
     const store = transaction.objectStore('offline_preparacion');
 
@@ -120,13 +143,21 @@ export class OfflineStorageService {
       };
 
       request.onerror = () => {
-        reject(new Error('Error al obtener preparación de IndexedDB'));
+        const error = new Error(`Error al obtener preparación de IndexedDB: ${request.error?.message}`);
+        console.error(error);
+        reject(error);
       };
     });
   }
 
   async getAllPreparaciones(empresaId: number): Promise<OfflinePreparacion[]> {
-    const db = await this.getDB();
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
     const transaction = db.transaction(['offline_preparacion'], 'readonly');
     const store = transaction.objectStore('offline_preparacion');
     const index = store.index('empresa_sucursal');
@@ -136,17 +167,26 @@ export class OfflineStorageService {
 
       request.onsuccess = () => {
         const results = request.result || [];
+        console.log(`Obtenidas ${results.length} preparaciones para empresa ${empresaId}`);
         resolve(results.map((r) => r.data));
       };
 
       request.onerror = () => {
-        reject(new Error('Error al obtener preparaciones de IndexedDB'));
+        const error = new Error(`Error al obtener preparaciones de IndexedDB: ${request.error?.message}`);
+        console.error(error);
+        reject(error);
       };
     });
   }
 
   async deletePreparacion(empresaId: number, sucursalId: number): Promise<void> {
-    const db = await this.getDB();
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
     const transaction = db.transaction(['offline_preparacion'], 'readwrite');
     const store = transaction.objectStore('offline_preparacion');
 
@@ -154,17 +194,26 @@ export class OfflineStorageService {
       const request = store.delete(`${empresaId}_${sucursalId}`);
 
       request.onsuccess = () => {
+        console.log(`Preparación eliminada: empresa=${empresaId}, sucursal=${sucursalId}`);
         resolve();
       };
 
       request.onerror = () => {
-        reject(new Error('Error al eliminar preparación de IndexedDB'));
+        const error = new Error(`Error al eliminar preparación de IndexedDB: ${request.error?.message}`);
+        console.error(error);
+        reject(error);
       };
     });
   }
 
   async clearAllPreparaciones(): Promise<void> {
-    const db = await this.getDB();
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
     const transaction = db.transaction(['offline_preparacion'], 'readwrite');
     const store = transaction.objectStore('offline_preparacion');
 
@@ -172,31 +221,14 @@ export class OfflineStorageService {
       const request = store.clear();
 
       request.onsuccess = () => {
+        console.log('IndexedDB limpiado completamente');
         resolve();
       };
 
       request.onerror = () => {
-        reject(new Error('Error al limpiar IndexedDB'));
-      };
-    });
-  }
-
-  private getDB(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      if (this.db) {
-        resolve(this.db);
-        return;
-      }
-
-      const request = indexedDB.open(this.dbName);
-
-      request.onsuccess = () => {
-        this.db = request.result;
-        resolve(this.db);
-      };
-
-      request.onerror = () => {
-        reject(new Error('No se pudo conectar a IndexedDB'));
+        const error = new Error(`Error al limpiar IndexedDB: ${request.error?.message}`);
+        console.error(error);
+        reject(error);
       };
     });
   }

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/sucursales-catalogo/cu08-gestionar-productos/gestionar-productos.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\n.product-cell {\r\n  display: flex;\r\n  align-items: center;\r\n  gap: 10px;\r\n}\r\n\r\n.tabs {\r\n  display: flex;\r\n  gap: 4px;\r\n  margin-bottom: 16px;\r\n  border-bottom: 1px solid var(--color-border);\r\n}\r\n\r\n.tabs__item {\r\n  padding: 10px 14px;\r\n  border: none;\r\n  background: none;\r\n  font-size: 13px;\r\n  font-weight: 600;\r\n  color: var(--color-text-secondary);\r\n  cursor: pointer;\r\n  border-bottom: 2px solid transparent;\r\n  margin-bottom: -1px;\r\n\r\n  &:hover {\r\n    color: var(--color-text);\r\n  }\r\n\r\n  &.is-active {\r\n    color: var(--color-primary);\r\n    border-bottom-color: var(--color-primary);\r\n  }\r\n}\r\n\r\n@media (max-width: 480px) {\r\n  .tabs {\r\n    overflow-x: auto;\r\n  }\r\n\r\n  .tabs__item {\r\n    flex-shrink: 0;\r\n    white-space: nowrap;\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAGF,CAAA;AACE,WAAA;AACA,eAAA;AACA,OAAA;;AAGF,CAAA;AACE,WAAA;AACA,OAAA;AACA,iBAAA;AACA,iBAAA,IAAA,MAAA,IAAA;;AAGF,CAAA;AACE,WAAA,KAAA;AACA,UAAA;AACA,cAAA;AACA,aAAA;AACA,eAAA;AACA,SAAA,IAAA;AACA,UAAA;AACA,iBAAA,IAAA,MAAA;AACA,iBAAA;;AAEA,CAXF,UAWE;AACE,SAAA,IAAA;;AAGF,CAfF,UAeE,CAAA;AACE,SAAA,IAAA;AACA,uBAAA,IAAA;;AAIJ,QAAA,WAAA;AACE,GA7BF;AA8BI,gBAAA;;AAGF,GA1BF;AA2BI,iBAAA;AACA,iBAAA;;;",
+  "names": []
+}

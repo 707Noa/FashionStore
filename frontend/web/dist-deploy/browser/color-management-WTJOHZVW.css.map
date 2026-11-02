@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/sucursales-catalogo/atributos/color-management/color-management.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;",
+  "names": []
+}

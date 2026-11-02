@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/sucursales-catalogo/gestion-proveedores/proveedor.service.ts"
+  ],
+  "sourcesContent": [
+    "import { HttpClient, HttpParams } from '@angular/common/http';\r\nimport { Injectable, inject } from '@angular/core';\r\nimport { Observable } from 'rxjs';\r\nimport { environment } from '../../../environments/environment';\r\nimport { Proveedor, ProveedorPayload, ProveedoresListQuery } from './proveedor.model';\r\n\r\n@Injectable({ providedIn: 'root' })\r\nexport class ProveedorService {\r\n  private readonly http = inject(HttpClient);\r\n  private readonly baseUrl = `${environment.apiUrl}/proveedores`;\r\n\r\n  list(query?: ProveedoresListQuery): Observable<Proveedor[]> {\r\n    let params = new HttpParams();\r\n    if (query?.search) {\r\n      params = params.set('search', query.search);\r\n    }\r\n    if (query?.estado && query.estado !== 'all') {\r\n      params = params.set('estado', query.estado);\r\n    }\r\n    return this.http.get<Proveedor[]>(this.baseUrl, { params });\r\n  }\r\n\r\n  create(payload: ProveedorPayload): Observable<Proveedor> {\r\n    return this.http.post<Proveedor>(this.baseUrl, payload);\r\n  }\r\n\r\n  update(id: number, payload: ProveedorPayload): Observable<Proveedor> {\r\n    return this.http.put<Proveedor>(`${this.baseUrl}/${id}`, payload);\r\n  }\r\n\r\n  setActive(id: number, isActive: boolean): Observable<Proveedor> {\r\n    return this.http.patch<Proveedor>(`${this.baseUrl}/${id}/estado`, { is_active: isActive });\r\n  }\r\n\r\n  delete(id: number): Observable<void> {\r\n    return this.http.delete<void>(`${this.baseUrl}/${id}`);\r\n  }\r\n}\r\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;;AAOM,IAAO,mBAAP,MAAO,kBAAgB;EACV,OAAO,OAAO,UAAU;EACxB,UAAU,GAAG,YAAY,MAAM;EAEhD,KAAK,OAAsD;AACzD,QAAI,SAAS,IAAI,WAAU;AAC3B,QAAI,OAAO,QAAQ;AACjB,eAAS,OAAO,IAAI,UAAU,MAAM,MAAM;IAC5C;AACA,QAAI,OAAO,UAAU,MAAM,WAAW,OAAO;AAC3C,eAAS,OAAO,IAAI,UAAU,MAAM,MAAM;IAC5C;AACA,WAAO,KAAK,KAAK,IAAiB,KAAK,SAAS,EAAE,OAAM,CAAE;EAC5D;EAEA,OAAO,SAAiD;AACtD,WAAO,KAAK,KAAK,KAAgB,KAAK,SAAS,OAAO;EACxD;EAEA,OAAO,IAAY,SAAiD;AAClE,WAAO,KAAK,KAAK,IAAe,GAAG,KAAK,OAAO,IAAI,EAAE,IAAI,OAAO;EAClE;EAEA,UAAU,IAAY,UAAyC;AAC7D,WAAO,KAAK,KAAK,MAAiB,GAAG,KAAK,OAAO,IAAI,EAAE,WAAW,EAAE,WAAW,SAAQ,CAAE;EAC3F;EAEA,OAAO,IAA6B;AAClC,WAAO,KAAK,KAAK,OAAa,GAAG,KAAK,OAAO,IAAI,EAAE,EAAE;EACvD;;qCA7BW,mBAAgB;EAAA;4EAAhB,mBAAgB,SAAhB,kBAAgB,WAAA,YADH,OAAM,CAAA;;;sEACnB,kBAAgB,CAAA;UAD5B;WAAW,EAAE,YAAY,OAAM,CAAE;;;",
+  "names": [],
+  "debugId": "b122996a-d380-576e-abec-4c37a6b590b0"
+}

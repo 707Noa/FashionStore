@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/core/utils/ruta-por-rol.ts"
+  ],
+  "sourcesContent": [
+    "import { RolUsuario } from '../../usuarios-y-accesos/shared/models/usuario.model';\r\n\r\n// Punto único de verdad: a qué panel pertenece cada rol reconocido.\r\n//\r\n// CU01 (login.ts) lo usa para decidir a dónde navegar justo después de\r\n// iniciar sesión; NoAutorizado lo reutiliza para devolver al usuario a SU\r\n// PROPIO panel en vez de a '/' -- ver core/pages/no-autorizado/no-autorizado.ts.\r\n//\r\n// Es un Record<RolUsuario, string>, no un if/else: el compilador exige que\r\n// los 6 roles estén cubiertos. Antes, un if/else incompleto en login.ts no\r\n// contemplaba CAJERO y caía en un `destino = '/'` por defecto -- CAJERO\r\n// terminaba en el área pública, indistinguible de un Cliente. Con este mapa,\r\n// agregar un rol nuevo sin registrar su ruta aquí es un error de\r\n// compilación, no un olvido que se note recién en producción.\r\nexport const RUTA_POR_ROL: Record<RolUsuario, string> = {\r\n  SUPERADMIN: '/superadmin',\r\n  ADMINISTRADOR: '/admin',\r\n  ENCARGADO_SUCURSAL: '/encargado',\r\n  PROVEEDOR: '/proveedor',\r\n  // CAJERO -- integración mínima de CU20: una pantalla puntual (\"Reservas\r\n  // pendientes de atención\", ver features/cajero/reservas-pendientes), NUNCA\r\n  // el fallback a '/' que causaba el bug original (CAJERO se veía como un\r\n  // Cliente). Todavía no es un panel completo -- CU24 (Registrar venta) y\r\n  // CU25 (Procesar pago) son quienes lo necesitarían, fuera de alcance.\r\n  CAJERO: '/cajero',\r\n  CLIENTE: '/home',\r\n};\r\n"
+  ],
+  "mappings": ";AAcO,IAAM,eAA2C;AAAA,EACtD,YAAY;AAAA,EACZ,eAAe;AAAA,EACf,oBAAoB;AAAA,EACpB,WAAW;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,EAMX,QAAQ;AAAA,EACR,SAAS;AACX;",
+  "names": [],
+  "debugId": "bad38a34-1bf9-5d93-920a-01376729809a"
+}

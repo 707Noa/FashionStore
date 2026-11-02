@@ -177,6 +177,17 @@ export const routes: Routes = [
           ),
         title: 'Detalle de producto · Fashion Store',
       },
+      {
+        // CU6 -- Preparar información para operación offline. Disponible
+        // para usuarios autenticados (clientes y administradores).
+        path: 'operacion-offline',
+        loadComponent: () =>
+          import('./features/operacion-offline/componentes/preparar-offline.component').then(
+            (m) => m.PrepararOfflineComponent,
+          ),
+        canActivate: [authGuard],
+        title: 'Operación Offline · Fashion Store',
+      },
     ],
   },
   {

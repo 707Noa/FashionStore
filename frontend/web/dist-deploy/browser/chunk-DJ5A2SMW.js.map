@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/features/pago-electronico/pago-electronico.service.ts"
+  ],
+  "sourcesContent": [
+    "import { HttpClient } from '@angular/common/http';\r\nimport { Injectable, inject } from '@angular/core';\r\nimport { Observable } from 'rxjs';\r\nimport { environment } from '../../../environments/environment';\r\nimport {\r\n  CheckoutSessionOut,\r\n  CrearCheckoutPayload,\r\n  VentaPagadaOut,\r\n  VerificarPagoPayload,\r\n} from './pago-electronico.model';\r\n\r\n/** Consume CU23 -- Procesar pago electrónico. Requiere un CLIENTE\r\n * autenticado (el interceptor HTTP ya adjunta el Bearer token). El backend\r\n * obtiene la Venta y su total SIEMPRE desde su propio id/registro -- este\r\n * servicio nunca envía monto, precio ni estado; con Stripe Checkout Hosted\r\n * tampoco maneja número de tarjeta, CVC ni fecha de vencimiento. */\r\n@Injectable({ providedIn: 'root' })\r\nexport class PagoElectronicoService {\r\n  private readonly http = inject(HttpClient);\r\n  private readonly baseUrl = `${environment.apiUrl}/pagos`;\r\n\r\n  crearCheckout(payload: CrearCheckoutPayload): Observable<CheckoutSessionOut> {\r\n    return this.http.post<CheckoutSessionOut>(`${this.baseUrl}/checkout`, payload);\r\n  }\r\n\r\n  verificarPago(payload: VerificarPagoPayload): Observable<VentaPagadaOut> {\r\n    return this.http.post<VentaPagadaOut>(`${this.baseUrl}/verificar`, payload);\r\n  }\r\n}\r\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;AAiBM,IAAO,yBAAP,MAAO,wBAAsB;EAChB,OAAO,OAAO,UAAU;EACxB,UAAU,GAAG,YAAY,MAAM;EAEhD,cAAc,SAA8D;AAC1E,WAAO,KAAK,KAAK,KAAyB,GAAG,KAAK,OAAO,aAAa,OAAO;EAC/E;EAEA,cAAc,SAA0D;AACtE,WAAO,KAAK,KAAK,KAAqB,GAAG,KAAK,OAAO,cAAc,OAAO;EAC5E;;qCAVW,yBAAsB;EAAA;4EAAtB,yBAAsB,SAAtB,wBAAsB,WAAA,YADT,OAAM,CAAA;;;sEACnB,wBAAsB,CAAA;UADlC;WAAW,EAAE,YAAY,OAAM,CAAE;;;",
+  "names": [],
+  "debugId": "bfbced29-55b8-5218-93a7-c2a6d9d182c4"
+}

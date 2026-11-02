@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/admin/reportes-indicadores/grafico-lineas/grafico-lineas.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\n.linea-chart {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 6px;\r\n}\r\n\r\n.linea-chart__svg {\r\n  width: 100%;\r\n  height: 160px;\r\n  display: block;\r\n}\r\n\r\n.linea-chart__area {\r\n  fill: color-mix(in srgb, var(--color-primary) 12%, transparent);\r\n  stroke: none;\r\n}\r\n\r\n.linea-chart__linea {\r\n  fill: none;\r\n  stroke: var(--color-primary);\r\n  stroke-width: 2.5;\r\n  stroke-linejoin: round;\r\n  stroke-linecap: round;\r\n  vector-effect: non-scaling-stroke;\r\n}\r\n\r\n.linea-chart__ejes {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  font-size: 11px;\r\n  color: var(--color-text-secondary);\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAGF,CAAA;AACE,WAAA;AACA,kBAAA;AACA,OAAA;;AAGF,CAAA;AACE,SAAA;AACA,UAAA;AACA,WAAA;;AAGF,CAAA;AACE,QAAA,UAAA,GAAA,IAAA,EAAA,IAAA,iBAAA,GAAA,EAAA;AACA,UAAA;;AAGF,CAAA;AACE,QAAA;AACA,UAAA,IAAA;AACA,gBAAA;AACA,mBAAA;AACA,kBAAA;AACA,iBAAA;;AAGF,CAAA;AACE,WAAA;AACA,eAAA;AACA,mBAAA;AACA,aAAA;AACA,SAAA,IAAA;;",
+  "names": []
+}
