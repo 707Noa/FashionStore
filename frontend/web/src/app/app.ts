@@ -1,7 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ToastContainer } from './core/ui/toast/toast-container';
 import { ConfirmDialog } from './core/ui/confirm-dialog/confirm-dialog';
+import { AuthService } from './core/services/auth.service';
+import { OfflineAutoSyncService } from './core/services/offline-auto-sync.service';
 
 @Component({
   selector: 'app-root',
@@ -9,4 +11,18 @@ import { ConfirmDialog } from './core/ui/confirm-dialog/confirm-dialog';
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App {}
+export class App implements OnInit {
+  private readonly authService = inject(AuthService);
+  private readonly offlineAutoSync = inject(OfflineAutoSyncService);
+
+  ngOnInit(): void {
+    // Disparar CU06 automáticamente cuando usuario está autenticado
+    const usuario = this.authService.usuario();
+    if (usuario?.empresa_id) {
+      console.log('CU06: Iniciando preparación automática...');
+      this.offlineAutoSync.prepararAutomaticamente().catch((error) => {
+        console.warn('CU06: Error en preparación automática:', error);
+      });
+    }
+  }
+}

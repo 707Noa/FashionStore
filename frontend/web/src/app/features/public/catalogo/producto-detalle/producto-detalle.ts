@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { resolveMediaUrl } from '../../../../core/utils/resolve-media-url';
 import { Icon } from '../../../../core/ui/icon/icon';
@@ -11,20 +12,27 @@ import { CrearReserva } from '../../../reservas/crear-reserva/crear-reserva';
 import { AgregarCarrito } from '../../../carrito/agregar-carrito/agregar-carrito';
 import { DisponibilidadSucursal, VarianteDisponible } from './disponibilidad.model';
 import { DisponibilidadService } from './disponibilidad.service';
+import { ConnectivityService } from '../../../../core/services/connectivity.service';
+import { OfflinePreparacionService } from '../../../operacion-offline/servicios/offline-preparacion.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { OfflinePreparacion } from '../../../../core/services/offline-storage.service';
 
 const CIUDAD_STORAGE_KEY = 'fashionstore_ciudad_id';
 
 @Component({
   selector: 'app-producto-detalle',
-  imports: [RouterLink, Icon, FormsModule, CrearReserva, AgregarCarrito],
+  imports: [RouterLink, Icon, FormsModule, CrearReserva, AgregarCarrito, CommonModule],
   templateUrl: './producto-detalle.html',
   styleUrl: './producto-detalle.scss',
 })
-export class ProductoDetalle {
+export class ProductoDetalle implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly catalogoService = inject(CatalogoService);
   private readonly sucursalService = inject(SucursalPublicaService);
   private readonly disponibilidadService = inject(DisponibilidadService);
+  private readonly connectivity = inject(ConnectivityService);
+  private readonly offlinePreparacion = inject(OfflinePreparacionService);
+  private readonly authService = inject(AuthService);
 
   protected readonly resolveMediaUrl = resolveMediaUrl;
 
@@ -58,6 +66,8 @@ export class ProductoDetalle {
   protected readonly loadingCiudades = signal(true);
   protected readonly loadingDisponibilidad = signal(false);
   protected readonly errorDisponibilidad = signal<string | null>(null);
+  protected readonly isOffline = signal(false);
+  protected readonly fechaUltimaActualizacion = signal<string | null>(null);
 
   // CU17 (crear reserva): sucursal que el propio Cliente eligió haciendo
   // clic en una tarjeta de "Stock por sucursal" -- a diferencia de
@@ -157,6 +167,49 @@ export class ProductoDetalle {
     this.horaParam = this.route.snapshot.queryParamMap.get('hora');
     this.agregarCarritoParam = this.route.snapshot.queryParamMap.get('agregarCarrito') === '1';
 
+    this.isOffline.set(!this.connectivity.isOnline());
+  }
+
+  ngOnInit(): void {
+    this.connectivity.isOnline$.subscribe((isOnline) => {
+      this.isOffline.set(!isOnline);
+      if (isOnline) {
+        this.fechaUltimaActualizacion.set(null);
+      } else {
+        void this.actualizarFechaUltimaActualizacion();
+      }
+    });
+
+    this.cargarProducto();
+    this.cargarCiudades();
+  }
+
+  private async actualizarFechaUltimaActualizacion(): Promise<void> {
+    const usuario = this.authService.usuario();
+    if (!usuario?.empresa_id) {
+      return;
+    }
+
+    const preparaciones = await this.offlinePreparacion.obtenerTodasLasPreparaciones(
+      usuario.empresa_id,
+    );
+
+    if (preparaciones.length > 0) {
+      const maReciente = preparaciones.reduce((prev: OfflinePreparacion, current: OfflinePreparacion) =>
+        new Date(current.metadata.fecha_preparacion) > new Date(prev.metadata.fecha_preparacion)
+          ? current
+          : prev,
+        preparaciones[0],
+      );
+      this.fechaUltimaActualizacion.set(maReciente.metadata.fecha_preparacion);
+    }
+  }
+
+  private cargarProducto(): void {
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    const tallaIdParam = Number(this.route.snapshot.queryParamMap.get('tallaId')) || null;
+    const colorIdParam = Number(this.route.snapshot.queryParamMap.get('colorId')) || null;
+
     this.catalogoService.getProducto(id).subscribe({
       next: (producto) => {
         this.producto.set(producto);
@@ -176,7 +229,9 @@ export class ProductoDetalle {
         this.notFound.set(true);
       },
     });
+  }
 
+  private cargarCiudades(): void {
     this.sucursalService.listCiudades().subscribe({
       next: (ciudades) => {
         this.ciudades.set(ciudades);

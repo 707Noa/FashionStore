@@ -11,6 +11,17 @@
       <a routerLink="/home/catalogo" class="btn btn--ghost btn--sm">Volver al catálogo</a>
     </div>
   } @else {
+    @if (isOffline()) {
+      <div [ngStyle]="{ background: '#fff3cd', border: '1px solid #ffc107', padding: '8px', marginBottom: '12px', color: '#856404', fontSize: '12px' }">
+        <span>⚠️ Sin conexión — mostrando información local</span>
+        @if (fechaUltimaActualizacion()) {
+          <span [ngStyle]="{ fontSize: '10px', opacity: 0.8, marginLeft: '8px' }">
+            Actualizado: {{ fechaUltimaActualizacion() | date : 'dd/MM/yyyy HH:mm' }}
+          </span>
+        }
+      </div>
+    }
+
     <a routerLink="/home/catalogo" class="back-link">
       <app-icon name="arrow-right" style="width: 13px; height: 13px; transform: rotate(180deg)" />
       Volver al catálogo

@@ -112,13 +112,20 @@ export class OfflineStorageService {
 
       request.onsuccess = () => {
         console.log(`Preparación guardada: empresa=${empresaId}, sucursal=${preparacion.metadata.sucursal_id}`);
-        resolve();
       };
 
       request.onerror = () => {
         const error = new Error(`Error al guardar preparación en IndexedDB: ${request.error?.message}`);
         console.error(error);
         reject(error);
+      };
+
+      transaction.oncomplete = () => {
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
       };
     });
   }
@@ -135,17 +142,25 @@ export class OfflineStorageService {
     const store = transaction.objectStore('offline_preparacion');
 
     return new Promise((resolve, reject) => {
+      let result: OfflinePreparacion | null = null;
       const request = store.get(`${empresaId}_${sucursalId}`);
 
       request.onsuccess = () => {
-        const result = request.result;
-        resolve(result ? result.data : null);
+        result = request.result ? request.result.data : null;
       };
 
       request.onerror = () => {
         const error = new Error(`Error al obtener preparación de IndexedDB: ${request.error?.message}`);
         console.error(error);
         reject(error);
+      };
+
+      transaction.oncomplete = () => {
+        resolve(result);
+      };
+
+      transaction.onerror = () => {
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
       };
     });
   }
@@ -163,18 +178,27 @@ export class OfflineStorageService {
     const index = store.index('empresa_sucursal');
 
     return new Promise((resolve, reject) => {
+      let results: OfflinePreparacion[] = [];
       const request = index.getAll(IDBKeyRange.bound([empresaId, 0], [empresaId, Infinity]));
 
       request.onsuccess = () => {
-        const results = request.result || [];
-        console.log(`Obtenidas ${results.length} preparaciones para empresa ${empresaId}`);
-        resolve(results.map((r) => r.data));
+        const rawResults = request.result || [];
+        console.log(`Obtenidas ${rawResults.length} preparaciones para empresa ${empresaId}`);
+        results = rawResults.map((r) => r.data);
       };
 
       request.onerror = () => {
         const error = new Error(`Error al obtener preparaciones de IndexedDB: ${request.error?.message}`);
         console.error(error);
         reject(error);
+      };
+
+      transaction.oncomplete = () => {
+        resolve(results);
+      };
+
+      transaction.onerror = () => {
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
       };
     });
   }
@@ -195,13 +219,20 @@ export class OfflineStorageService {
 
       request.onsuccess = () => {
         console.log(`Preparación eliminada: empresa=${empresaId}, sucursal=${sucursalId}`);
-        resolve();
       };
 
       request.onerror = () => {
         const error = new Error(`Error al eliminar preparación de IndexedDB: ${request.error?.message}`);
         console.error(error);
         reject(error);
+      };
+
+      transaction.oncomplete = () => {
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
       };
     });
   }
@@ -222,13 +253,20 @@ export class OfflineStorageService {
 
       request.onsuccess = () => {
         console.log('IndexedDB limpiado completamente');
-        resolve();
       };
 
       request.onerror = () => {
         const error = new Error(`Error al limpiar IndexedDB: ${request.error?.message}`);
         console.error(error);
         reject(error);
+      };
+
+      transaction.oncomplete = () => {
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
       };
     });
   }
