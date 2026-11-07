@@ -24,50 +24,50 @@ class CategoriasService:
     def __init__(self, db: Session):
         self._repo = CategoriasRepository(db)
 
-    def listar(self, search: str | None, is_active: bool | None) -> list[Categoria]:
-        return self._repo.listar(search=search, is_active=is_active)
+    def listar(self, search: str | None, is_active: bool | None, empresa_id: int) -> list[Categoria]:
+        return self._repo.listar(search=search, is_active=is_active, empresa_id=empresa_id)
 
-    def obtener(self, categoria_id: int) -> Categoria:
-        categoria = self._repo.get_by_id(categoria_id)
+    def obtener(self, categoria_id: int, empresa_id: int) -> Categoria:
+        categoria = self._repo.get_by_id(categoria_id, empresa_id=empresa_id)
         if categoria is None:
             raise RegistroNoEncontradoError
         return categoria
 
-    def crear(self, datos: ItemCatalogoCrear) -> Categoria:
-        if self._repo.existe_nombre(datos.nombre):
+    def crear(self, datos: ItemCatalogoCrear, empresa_id: int) -> Categoria:
+        if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id):
             raise NombreDuplicadoError
-        return self._repo.crear(Categoria(nombre=datos.nombre, is_active=datos.is_active))
+        return self._repo.crear(Categoria(nombre=datos.nombre, is_active=datos.is_active, empresa_id=empresa_id))
 
-    def actualizar(self, categoria_id: int, datos: ItemCatalogoActualizar) -> Categoria:
-        categoria = self.obtener(categoria_id)
-        if self._repo.existe_nombre(datos.nombre, excluyendo_id=categoria.id):
+    def actualizar(self, categoria_id: int, datos: ItemCatalogoActualizar, empresa_id: int) -> Categoria:
+        categoria = self.obtener(categoria_id, empresa_id=empresa_id)
+        if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id, excluyendo_id=categoria.id):
             raise NombreDuplicadoError
         categoria.nombre = datos.nombre
         return self._repo.guardar(categoria)
 
-    def cambiar_estado(self, categoria_id: int, activo: bool) -> Categoria:
-        categoria = self.obtener(categoria_id)
+    def cambiar_estado(self, categoria_id: int, activo: bool, empresa_id: int) -> Categoria:
+        categoria = self.obtener(categoria_id, empresa_id=empresa_id)
         categoria.is_active = activo
         return self._repo.guardar(categoria)
 
-    def establecer_imagen(self, categoria_id: int, archivo: UploadFile, contenido: bytes) -> Categoria:
-        categoria = self.obtener(categoria_id)
+    def establecer_imagen(self, categoria_id: int, archivo: UploadFile, contenido: bytes, empresa_id: int) -> Categoria:
+        categoria = self.obtener(categoria_id, empresa_id=empresa_id)
         url_anterior = categoria.imagen_url
         categoria.imagen_url = guardar_archivo_imagen("categorias", archivo, contenido)
         categoria = self._repo.guardar(categoria)
         eliminar_archivo_imagen(url_anterior)
         return categoria
 
-    def eliminar_imagen(self, categoria_id: int) -> Categoria:
-        categoria = self.obtener(categoria_id)
+    def eliminar_imagen(self, categoria_id: int, empresa_id: int) -> Categoria:
+        categoria = self.obtener(categoria_id, empresa_id=empresa_id)
         url_anterior = categoria.imagen_url
         categoria.imagen_url = None
         categoria = self._repo.guardar(categoria)
         eliminar_archivo_imagen(url_anterior)
         return categoria
 
-    def eliminar(self, categoria_id: int) -> None:
-        categoria = self.obtener(categoria_id)
+    def eliminar(self, categoria_id: int, empresa_id: int) -> None:
+        categoria = self.obtener(categoria_id, empresa_id=empresa_id)
         self._repo.eliminar(categoria)
 
 

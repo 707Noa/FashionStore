@@ -54,17 +54,17 @@ def listar_categorias(
     search: str | None = Query(default=None),
     estado: str | None = Query(default=None, pattern="^(active|inactive)$"),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> list[CategoriaOut]:
-    return CategoriasService(db).listar(search=search, is_active=_estado_a_bool(estado))
+    return CategoriasService(db).listar(search=search, is_active=_estado_a_bool(estado), empresa_id=current_user.empresa_id)
 
 
 @router_categorias.post("", response_model=CategoriaOut, status_code=status.HTTP_201_CREATED)
 def crear_categoria(
-    payload: ItemCatalogoCrear, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    payload: ItemCatalogoCrear, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> CategoriaOut:
     try:
-        return CategoriasService(db).crear(payload)
+        return CategoriasService(db).crear(payload, empresa_id=current_user.empresa_id)
     except NombreDuplicadoError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una categoría con ese nombre.") from exc
 
@@ -74,10 +74,10 @@ def actualizar_categoria(
     categoria_id: int,
     payload: ItemCatalogoActualizar,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> CategoriaOut:
     try:
-        return CategoriasService(db).actualizar(categoria_id, payload)
+        return CategoriasService(db).actualizar(categoria_id, payload, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoría no encontrada.") from exc
     except NombreDuplicadoError as exc:
@@ -89,10 +89,10 @@ def cambiar_estado_categoria(
     categoria_id: int,
     payload: CambiarEstadoRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> CategoriaOut:
     try:
-        return CategoriasService(db).cambiar_estado(categoria_id, payload.is_active)
+        return CategoriasService(db).cambiar_estado(categoria_id, payload.is_active, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoría no encontrada.") from exc
 
@@ -102,11 +102,11 @@ async def establecer_imagen_categoria(
     categoria_id: int,
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> CategoriaOut:
     contenido = await archivo.read()
     try:
-        return CategoriasService(db).establecer_imagen(categoria_id, archivo, contenido)
+        return CategoriasService(db).establecer_imagen(categoria_id, archivo, contenido, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoría no encontrada.") from exc
     except ImagenInvalidaError as exc:
@@ -123,20 +123,20 @@ async def establecer_imagen_categoria(
 
 @router_categorias.delete("/{categoria_id}/imagen", response_model=CategoriaOut)
 def eliminar_imagen_categoria(
-    categoria_id: int, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    categoria_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> CategoriaOut:
     try:
-        return CategoriasService(db).eliminar_imagen(categoria_id)
+        return CategoriasService(db).eliminar_imagen(categoria_id, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoría no encontrada.") from exc
 
 
 @router_categorias.delete("/{categoria_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_categoria(
-    categoria_id: int, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    categoria_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> None:
     try:
-        CategoriasService(db).eliminar(categoria_id)
+        CategoriasService(db).eliminar(categoria_id, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoría no encontrada.") from exc
     except IntegrityError as exc:
