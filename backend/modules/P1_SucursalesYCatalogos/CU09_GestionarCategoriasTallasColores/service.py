@@ -75,34 +75,34 @@ class TallasService:
     def __init__(self, db: Session):
         self._repo = TallasRepository(db)
 
-    def listar(self, search: str | None, is_active: bool | None) -> list[Talla]:
-        return self._repo.listar(search=search, is_active=is_active)
+    def listar(self, search: str | None, is_active: bool | None, empresa_id: int) -> list[Talla]:
+        return self._repo.listar(search=search, is_active=is_active, empresa_id=empresa_id)
 
-    def obtener(self, talla_id: int) -> Talla:
-        talla = self._repo.get_by_id(talla_id)
+    def obtener(self, talla_id: int, empresa_id: int) -> Talla:
+        talla = self._repo.get_by_id(talla_id, empresa_id=empresa_id)
         if talla is None:
             raise RegistroNoEncontradoError
         return talla
 
-    def crear(self, datos: ItemCatalogoCrear) -> Talla:
-        if self._repo.existe_nombre(datos.nombre):
+    def crear(self, datos: ItemCatalogoCrear, empresa_id: int) -> Talla:
+        if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id):
             raise NombreDuplicadoError
-        return self._repo.crear(Talla(nombre=datos.nombre, is_active=datos.is_active))
+        return self._repo.crear(Talla(nombre=datos.nombre, is_active=datos.is_active, empresa_id=empresa_id))
 
-    def actualizar(self, talla_id: int, datos: ItemCatalogoActualizar) -> Talla:
-        talla = self.obtener(talla_id)
-        if self._repo.existe_nombre(datos.nombre, excluyendo_id=talla.id):
+    def actualizar(self, talla_id: int, datos: ItemCatalogoActualizar, empresa_id: int) -> Talla:
+        talla = self.obtener(talla_id, empresa_id=empresa_id)
+        if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id, excluyendo_id=talla.id):
             raise NombreDuplicadoError
         talla.nombre = datos.nombre
         return self._repo.guardar(talla)
 
-    def cambiar_estado(self, talla_id: int, activo: bool) -> Talla:
-        talla = self.obtener(talla_id)
+    def cambiar_estado(self, talla_id: int, activo: bool, empresa_id: int) -> Talla:
+        talla = self.obtener(talla_id, empresa_id=empresa_id)
         talla.is_active = activo
         return self._repo.guardar(talla)
 
-    def eliminar(self, talla_id: int) -> None:
-        talla = self.obtener(talla_id)
+    def eliminar(self, talla_id: int, empresa_id: int) -> None:
+        talla = self.obtener(talla_id, empresa_id=empresa_id)
         self._repo.eliminar(talla)
 
 
@@ -110,32 +110,32 @@ class ColoresService:
     def __init__(self, db: Session):
         self._repo = ColoresRepository(db)
 
-    def listar(self, search: str | None, is_active: bool | None) -> list[Color]:
-        return self._repo.listar(search=search, is_active=is_active)
+    def listar(self, search: str | None, is_active: bool | None, empresa_id: int) -> list[Color]:
+        return self._repo.listar(search=search, is_active=is_active, empresa_id=empresa_id)
 
-    def obtener(self, color_id: int) -> Color:
-        color = self._repo.get_by_id(color_id)
+    def obtener(self, color_id: int, empresa_id: int) -> Color:
+        color = self._repo.get_by_id(color_id, empresa_id=empresa_id)
         if color is None:
             raise RegistroNoEncontradoError
         return color
 
-    def crear(self, datos: ItemCatalogoCrear) -> Color:
-        if self._repo.existe_nombre(datos.nombre):
+    def crear(self, datos: ItemCatalogoCrear, empresa_id: int) -> Color:
+        if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id):
             raise NombreDuplicadoError
-        return self._repo.crear(Color(nombre=datos.nombre, is_active=datos.is_active))
+        return self._repo.crear(Color(nombre=datos.nombre, is_active=datos.is_active, empresa_id=empresa_id))
 
-    def actualizar(self, color_id: int, datos: ItemCatalogoActualizar) -> Color:
-        color = self.obtener(color_id)
-        if self._repo.existe_nombre(datos.nombre, excluyendo_id=color.id):
+    def actualizar(self, color_id: int, datos: ItemCatalogoActualizar, empresa_id: int) -> Color:
+        color = self.obtener(color_id, empresa_id=empresa_id)
+        if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id, excluyendo_id=color.id):
             raise NombreDuplicadoError
         color.nombre = datos.nombre
         return self._repo.guardar(color)
 
-    def cambiar_estado(self, color_id: int, activo: bool) -> Color:
-        color = self.obtener(color_id)
+    def cambiar_estado(self, color_id: int, activo: bool, empresa_id: int) -> Color:
+        color = self.obtener(color_id, empresa_id=empresa_id)
         color.is_active = activo
         return self._repo.guardar(color)
 
-    def eliminar(self, color_id: int) -> None:
-        color = self.obtener(color_id)
+    def eliminar(self, color_id: int, empresa_id: int) -> None:
+        color = self.obtener(color_id, empresa_id=empresa_id)
         self._repo.eliminar(color)

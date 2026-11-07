@@ -21,11 +21,11 @@ const CLASES_ESTADO: Record<EstadoPromocion, string> = {
   DESACTIVADA: 'badge--inactive',
 };
 
-// Solo una promoción PROGRAMADA o ACTIVA admite Editar/Desactivar -- una ya
-// FINALIZADA o DESACTIVADA solo se puede consultar (ver backend,
-// service.py: editar() rechaza ambos estados; desactivar() no tiene sentido
-// sobre algo que ya terminó o ya está apagado).
-const ESTADOS_GESTIONABLES: EstadoPromocion[] = ['PROGRAMADA', 'ACTIVA'];
+// Una promoción PROGRAMADA, ACTIVA o FINALIZADA admite Editar (para extender
+// vigencia). DESACTIVADA no se puede editar -- debe reactivarse primero.
+// desactivar() solo tiene sentido sobre PROGRAMADA o ACTIVA (no sobre algo
+// que ya terminó por fecha).
+const ESTADOS_GESTIONABLES: EstadoPromocion[] = ['PROGRAMADA', 'ACTIVA', 'FINALIZADA'];
 
 /**
  * CU32 -- Gestionar promociones (Administrador). Mismo patrón visual/

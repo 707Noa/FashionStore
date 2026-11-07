@@ -16,9 +16,9 @@ crear()/editar() validan, en este orden, ANTES de tocar la base:
   3. Ninguno de esos productos ya tiene otra promoción `activa` cuyo rango
      se cruce con el nuevo (ver PromocionRepository.existe_solapamiento) --
      nunca se acumulan descuentos.
-editar() rechaza una promoción FINALIZADA que ya pasó su vigencia.
-Una promoción DESACTIVADA puede editarse para modificar sus parámetros antes
-de reactivarla.
+editar() rechaza una promoción DESACTIVADA -- si está desactivada, primero
+debe reactivarse. Una promoción FINALIZADA puede editarse para extender su
+vigencia (fecha_fin) a una fecha futura.
 
 desactivar() SOLO apaga la bandera `activa` -- nunca hay un DELETE físico en
 este módulo (ver Models/promocion.py): una promoción que ya tuvo vigencia
@@ -48,7 +48,7 @@ from .schemas import (
     PromocionListadoOut,
 )
 
-_ESTADOS_NO_EDITABLES = (EstadoPromocion.FINALIZADA,)
+_ESTADOS_NO_EDITABLES = (EstadoPromocion.DESACTIVADA,)
 
 
 class RangoFechaInvalidoError(Exception):

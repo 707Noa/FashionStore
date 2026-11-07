@@ -62,14 +62,20 @@ class PreparacionOfflineRepository:
         disponible = max(0, stock.cantidad - stock.stock_reservado)
         return disponible
 
-    def obtener_tallas(self) -> list[Talla]:
-        """Obtiene todas las tallas activas."""
-        stmt = select(Talla).where(Talla.is_active.is_(True)).order_by(Talla.nombre)
+    def obtener_tallas(self, empresa_id: int) -> list[Talla]:
+        """Obtiene tallas activas de la empresa."""
+        stmt = select(Talla).where(
+            Talla.empresa_id == empresa_id,
+            Talla.is_active.is_(True)
+        ).order_by(Talla.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
-    def obtener_colores(self) -> list[Color]:
-        """Obtiene todos los colores activos."""
-        stmt = select(Color).where(Color.is_active.is_(True)).order_by(Color.nombre)
+    def obtener_colores(self, empresa_id: int) -> list[Color]:
+        """Obtiene colores activos de la empresa."""
+        stmt = select(Color).where(
+            Color.empresa_id == empresa_id,
+            Color.is_active.is_(True)
+        ).order_by(Color.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
     def obtener_clientes_minimos(self, empresa_id: int) -> list[Usuario]:

@@ -52,7 +52,7 @@ class TemporadasService:
         )
 
     def actualizar(self, temporada_id: int, datos: TemporadaActualizar, empresa_id: int) -> Temporada:
-        temporada = self.obtener(temporada_id)
+        temporada = self.obtener(temporada_id, empresa_id=empresa_id)
         if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id, excluyendo_id=temporada.id):
             raise NombreDuplicadoError
         temporada.nombre = datos.nombre
@@ -80,8 +80,8 @@ class ColeccionesService:
     ) -> list[Coleccion]:
         return self._repo.listar(search=search, temporada_id=temporada_id, is_active=is_active, empresa_id=empresa_id)
 
-    def obtener(self, coleccion_id: int) -> Coleccion:
-        coleccion = self._repo.get_by_id(coleccion_id)
+    def obtener(self, coleccion_id: int, empresa_id: int | None = None) -> Coleccion:
+        coleccion = self._repo.get_by_id(coleccion_id, empresa_id=empresa_id)
         if coleccion is None:
             raise RegistroNoEncontradoError
         return coleccion
@@ -103,7 +103,7 @@ class ColeccionesService:
         return self._repo.crear(coleccion)
 
     def actualizar(self, coleccion_id: int, datos: ColeccionActualizar, empresa_id: int) -> Coleccion:
-        coleccion = self.obtener(coleccion_id)
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
 
         if self._temporadas.get_by_id(datos.temporada_id) is None:
             raise TemporadaNoEncontradaError
@@ -118,31 +118,31 @@ class ColeccionesService:
         coleccion.descripcion = datos.descripcion
         return self._repo.guardar(coleccion)
 
-    def cambiar_estado(self, coleccion_id: int, activo: bool) -> Coleccion:
-        coleccion = self.obtener(coleccion_id)
+    def cambiar_estado(self, coleccion_id: int, activo: bool, empresa_id: int) -> Coleccion:
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
         coleccion.is_active = activo
         return self._repo.guardar(coleccion)
 
-    def establecer_destacada_inicio(self, coleccion_id: int, destacada: bool) -> Coleccion:
-        coleccion = self.obtener(coleccion_id)
+    def establecer_destacada_inicio(self, coleccion_id: int, destacada: bool, empresa_id: int) -> Coleccion:
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
         if destacada:
-            self._repo.desmarcar_destacadas(excluyendo_id=coleccion_id)
+            self._repo.desmarcar_destacadas(excluyendo_id=coleccion_id, empresa_id=empresa_id)
         coleccion.es_destacada_inicio = destacada
         return self._repo.guardar(coleccion)
 
     def establecer_imagen_destacada(
-        self, coleccion_id: int, archivo: UploadFile, contenido: bytes
+        self, coleccion_id: int, archivo: UploadFile, contenido: bytes, empresa_id: int
     ) -> Coleccion:
-        coleccion = self.obtener(coleccion_id)
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
         url_anterior = coleccion.imagen_destacada_url
         coleccion.imagen_destacada_url = guardar_archivo_imagen("colecciones", archivo, contenido)
         coleccion = self._repo.guardar(coleccion)
         eliminar_archivo_imagen(url_anterior)
         return coleccion
 
-    def obtener_destacada_publica(self) -> Coleccion | None:
-        return self._repo.obtener_destacada_activa()
+    def obtener_destacada_publica(self, empresa_id: int | None = None) -> Coleccion | None:
+        return self._repo.obtener_destacada_activa(empresa_id=empresa_id)
 
-    def eliminar(self, coleccion_id: int) -> None:
-        coleccion = self.obtener(coleccion_id)
+    def eliminar(self, coleccion_id: int, empresa_id: int) -> None:
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
         self._repo.eliminar(coleccion)

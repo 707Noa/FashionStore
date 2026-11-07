@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.deps import require_roles
+from app.core.deps import get_current_usuario_opcional, require_roles
 from app.core.image_storage import MAX_TAMANO_BYTES, ImagenDemasiadoGrandeError, ImagenInvalidaError
 from app.db.session import get_db
 from modules.P1_SucursalesYCatalogos.Models.coleccion import Coleccion
@@ -179,20 +179,20 @@ def cambiar_estado_coleccion(
     coleccion_id: int,
     payload: CambiarEstadoRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ColeccionOut:
     try:
-        return ColeccionesService(db).cambiar_estado(coleccion_id, payload.is_active)
+        return ColeccionesService(db).cambiar_estado(coleccion_id, payload.is_active, current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
 
 
 @router_colecciones.delete("/{coleccion_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_coleccion(
-    coleccion_id: int, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    coleccion_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> None:
     try:
-        ColeccionesService(db).eliminar(coleccion_id)
+        ColeccionesService(db).eliminar(coleccion_id, current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
     except IntegrityError as exc:
@@ -208,14 +208,14 @@ def establecer_destacada_inicio(
     coleccion_id: int,
     payload: ColeccionDestacadaRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ColeccionOut:
     """Marca/desmarca esta colección como la destacada del Home. Al marcar
     una, el servicio desmarca automáticamente cualquier otra -- nunca hay
     más de una a la vez (ver también el índice único parcial en la BD)."""
     try:
         return ColeccionesService(db).establecer_destacada_inicio(
-            coleccion_id, payload.es_destacada_inicio
+            coleccion_id, payload.es_destacada_inicio, current_user.empresa_id
         )
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
@@ -226,11 +226,11 @@ async def establecer_imagen_destacada_coleccion(
     coleccion_id: int,
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ColeccionOut:
     contenido = await archivo.read()
     try:
-        return ColeccionesService(db).establecer_imagen_destacada(coleccion_id, archivo, contenido)
+        return ColeccionesService(db).establecer_imagen_destacada(coleccion_id, archivo, contenido, current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
     except ImagenInvalidaError as exc:
@@ -253,5 +253,10 @@ async def establecer_imagen_destacada_coleccion(
 
 
 @router_colecciones.get("/destacada", response_model=ColeccionDestacadaPublicaOut | None)
-def obtener_coleccion_destacada(db: Session = Depends(get_db)) -> Coleccion | None:
-    return ColeccionesService(db).obtener_destacada_publica()
+def obtener_coleccion_destacada(
+    usuario: Usuario | None = Depends(get_current_usuario_opcional),
+    db: Session = Depends(get_db)
+) -> Coleccion | None:
+    if usuario is None:
+        return None
+    return ColeccionesService(db).obtener_destacada_publica(empresa_id=usuario.empresa_id)

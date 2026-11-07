@@ -31,6 +31,13 @@
   ],
   "dataGroups": [
     {
+      "name": "api-health",
+      "urls": ["/api/v1/health"],
+      "cacheConfig": {
+        "strategy": "network-only"
+      }
+    },
+    {
       "name": "api-offline-prepare",
       "urls": ["/api/v1/offline/preparar"],
       "cacheConfig": {

@@ -26,30 +26,45 @@ router = APIRouter(prefix="/catalogo", tags=["CU11 - Consultar catálogo de pren
 
 @router.get("/categorias", response_model=list[CategoriaOut])
 def listar_categorias(
-    empresa_id: int | None = Query(default=None), db: Session = Depends(get_db)
+    usuario: Usuario | None = Depends(get_current_usuario_opcional),
+    db: Session = Depends(get_db)
 ) -> list[CategoriaOut]:
-    return CatalogoPublicoService(db).listar_categorias(empresa_id=empresa_id)
+    if usuario is None:
+        return []
+    return CatalogoPublicoService(db).listar_categorias(empresa_id=usuario.empresa_id)
 
 
 @router.get("/colecciones", response_model=list[ColeccionOut])
 def listar_colecciones(
     temporada_id: int | None = Query(default=None),
-    empresa_id: int | None = Query(default=None),
+    usuario: Usuario | None = Depends(get_current_usuario_opcional),
     db: Session = Depends(get_db),
 ) -> list[ColeccionOut]:
+    if usuario is None:
+        return []
     return CatalogoPublicoService(db).listar_colecciones(
-        temporada_id=temporada_id, empresa_id=empresa_id
+        temporada_id=temporada_id, empresa_id=usuario.empresa_id
     )
 
 
 @router.get("/tallas", response_model=list[TallaOut])
-def listar_tallas(db: Session = Depends(get_db)) -> list[TallaOut]:
-    return CatalogoPublicoService(db).listar_tallas()
+def listar_tallas(
+    usuario: Usuario | None = Depends(get_current_usuario_opcional),
+    db: Session = Depends(get_db)
+) -> list[TallaOut]:
+    if usuario is None:
+        return []
+    return CatalogoPublicoService(db).listar_tallas(empresa_id=usuario.empresa_id)
 
 
 @router.get("/colores", response_model=list[ColorOut])
-def listar_colores(db: Session = Depends(get_db)) -> list[ColorOut]:
-    return CatalogoPublicoService(db).listar_colores()
+def listar_colores(
+    usuario: Usuario | None = Depends(get_current_usuario_opcional),
+    db: Session = Depends(get_db)
+) -> list[ColorOut]:
+    if usuario is None:
+        return []
+    return CatalogoPublicoService(db).listar_colores(empresa_id=usuario.empresa_id)
 
 
 @router.get("/productos", response_model=list[ProductoOut])
@@ -59,16 +74,18 @@ def listar_productos(
     coleccion_id: int | None = Query(default=None),
     talla_id: int | None = Query(default=None),
     color_id: int | None = Query(default=None),
-    empresa_id: int | None = Query(default=None),
+    usuario: Usuario | None = Depends(get_current_usuario_opcional),
     db: Session = Depends(get_db),
 ) -> list[ProductoOut]:
+    if usuario is None:
+        return []
     return CatalogoPublicoService(db).listar_productos(
         search=search,
         categoria_id=categoria_id,
         coleccion_id=coleccion_id,
         talla_id=talla_id,
         color_id=color_id,
-        empresa_id=empresa_id,
+        empresa_id=usuario.empresa_id,
     )
 
 

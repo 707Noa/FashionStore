@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 export interface Empresa {
   id: number;
@@ -90,7 +91,7 @@ export interface CambiarEstadoPlan {
 })
 export class SuperadminService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = '/api/v1';
+  private readonly apiUrl = environment.apiUrl;
 
   getEmpresas(): Observable<Empresa[]> {
     return this.http.get<Empresa[]>(`${this.apiUrl}/empresas`);

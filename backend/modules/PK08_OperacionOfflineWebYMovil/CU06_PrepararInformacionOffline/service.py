@@ -111,10 +111,10 @@ class PreparacionOfflineService:
                 ))
 
         # 4. Obtener catálogos
-        tallas = self.repo.obtener_tallas()
+        tallas = self.repo.obtener_tallas(empresa_id=empresa_id)
         tallas_out = [TallaOut(id=t.id, nombre=t.nombre) for t in tallas]
 
-        colores = self.repo.obtener_colores()
+        colores = self.repo.obtener_colores(empresa_id=empresa_id)
         colores_out = [ColorOut(id=c.id, nombre=c.nombre) for c in colores]
 
         # 5. Obtener clientes mínimos

@@ -78,8 +78,11 @@ class ColeccionesRepository:
         stmt = stmt.order_by(Coleccion.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
-    def get_by_id(self, coleccion_id: int) -> Coleccion | None:
-        return self.db.get(Coleccion, coleccion_id)
+    def get_by_id(self, coleccion_id: int, empresa_id: int | None = None) -> Coleccion | None:
+        stmt = select(Coleccion).where(Coleccion.id == coleccion_id)
+        if empresa_id is not None:
+            stmt = stmt.where(Coleccion.empresa_id == empresa_id)
+        return self.db.execute(stmt).scalar_one_or_none()
 
     def existe_nombre_en_temporada(
         self, nombre: str, temporada_id: int, empresa_id: int, excluyendo_id: int | None = None
@@ -104,20 +107,24 @@ class ColeccionesRepository:
         self.db.refresh(coleccion)
         return coleccion
 
-    def desmarcar_destacadas(self, excluyendo_id: int) -> None:
+    def desmarcar_destacadas(self, excluyendo_id: int, empresa_id: int | None = None) -> None:
         """Pone es_destacada_inicio=False en cualquier otra colección que lo
         tuviera en True, para que al marcar una nueva quede solo una."""
-        stmt = (
-            update(Coleccion)
-            .where(Coleccion.es_destacada_inicio.is_(True), Coleccion.id != excluyendo_id)
-            .values(es_destacada_inicio=False)
+        stmt = update(Coleccion).where(
+            Coleccion.es_destacada_inicio.is_(True),
+            Coleccion.id != excluyendo_id
         )
+        if empresa_id is not None:
+            stmt = stmt.where(Coleccion.empresa_id == empresa_id)
+        stmt = stmt.values(es_destacada_inicio=False)
         self.db.execute(stmt)
 
-    def obtener_destacada_activa(self) -> Coleccion | None:
+    def obtener_destacada_activa(self, empresa_id: int | None = None) -> Coleccion | None:
         stmt = select(Coleccion).where(
             Coleccion.es_destacada_inicio.is_(True), Coleccion.is_active.is_(True)
         )
+        if empresa_id is not None:
+            stmt = stmt.where(Coleccion.empresa_id == empresa_id)
         return self.db.execute(stmt).scalars().first()
 
     def eliminar(self, coleccion: Coleccion) -> None:

@@ -157,17 +157,17 @@ def listar_tallas(
     search: str | None = Query(default=None),
     estado: str | None = Query(default=None, pattern="^(active|inactive)$"),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> list[ItemCatalogoOut]:
-    return TallasService(db).listar(search=search, is_active=_estado_a_bool(estado))
+    return TallasService(db).listar(search=search, is_active=_estado_a_bool(estado), empresa_id=current_user.empresa_id)
 
 
 @router_tallas.post("", response_model=ItemCatalogoOut, status_code=status.HTTP_201_CREATED)
 def crear_talla(
-    payload: ItemCatalogoCrear, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    payload: ItemCatalogoCrear, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> ItemCatalogoOut:
     try:
-        return TallasService(db).crear(payload)
+        return TallasService(db).crear(payload, empresa_id=current_user.empresa_id)
     except NombreDuplicadoError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una talla con ese nombre.") from exc
 
@@ -177,10 +177,10 @@ def actualizar_talla(
     talla_id: int,
     payload: ItemCatalogoActualizar,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ItemCatalogoOut:
     try:
-        return TallasService(db).actualizar(talla_id, payload)
+        return TallasService(db).actualizar(talla_id, payload, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Talla no encontrada.") from exc
     except NombreDuplicadoError as exc:
@@ -192,20 +192,20 @@ def cambiar_estado_talla(
     talla_id: int,
     payload: CambiarEstadoRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ItemCatalogoOut:
     try:
-        return TallasService(db).cambiar_estado(talla_id, payload.is_active)
+        return TallasService(db).cambiar_estado(talla_id, payload.is_active, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Talla no encontrada.") from exc
 
 
 @router_tallas.delete("/{talla_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_talla(
-    talla_id: int, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    talla_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> None:
     try:
-        TallasService(db).eliminar(talla_id)
+        TallasService(db).eliminar(talla_id, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Talla no encontrada.") from exc
     except IntegrityError as exc:
@@ -226,17 +226,17 @@ def listar_colores(
     search: str | None = Query(default=None),
     estado: str | None = Query(default=None, pattern="^(active|inactive)$"),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> list[ItemCatalogoOut]:
-    return ColoresService(db).listar(search=search, is_active=_estado_a_bool(estado))
+    return ColoresService(db).listar(search=search, is_active=_estado_a_bool(estado), empresa_id=current_user.empresa_id)
 
 
 @router_colores.post("", response_model=ItemCatalogoOut, status_code=status.HTTP_201_CREATED)
 def crear_color(
-    payload: ItemCatalogoCrear, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    payload: ItemCatalogoCrear, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> ItemCatalogoOut:
     try:
-        return ColoresService(db).crear(payload)
+        return ColoresService(db).crear(payload, empresa_id=current_user.empresa_id)
     except NombreDuplicadoError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe un color con ese nombre.") from exc
 
@@ -246,10 +246,10 @@ def actualizar_color(
     color_id: int,
     payload: ItemCatalogoActualizar,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ItemCatalogoOut:
     try:
-        return ColoresService(db).actualizar(color_id, payload)
+        return ColoresService(db).actualizar(color_id, payload, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Color no encontrado.") from exc
     except NombreDuplicadoError as exc:
@@ -261,20 +261,20 @@ def cambiar_estado_color(
     color_id: int,
     payload: CambiarEstadoRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ItemCatalogoOut:
     try:
-        return ColoresService(db).cambiar_estado(color_id, payload.is_active)
+        return ColoresService(db).cambiar_estado(color_id, payload.is_active, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Color no encontrado.") from exc
 
 
 @router_colores.delete("/{color_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_color(
-    color_id: int, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    color_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> None:
     try:
-        ColoresService(db).eliminar(color_id)
+        ColoresService(db).eliminar(color_id, empresa_id=current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Color no encontrado.") from exc
     except IntegrityError as exc:

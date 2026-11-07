@@ -51,11 +51,11 @@ class CatalogoPublicoService:
             temporada_id=temporada_id, empresa_id=empresa_id
         )
 
-    def listar_tallas(self) -> list[Talla]:
-        return self._repo.listar_tallas_activas()
+    def listar_tallas(self, empresa_id: int | None = None) -> list[Talla]:
+        return self._repo.listar_tallas_activas(empresa_id=empresa_id)
 
-    def listar_colores(self) -> list[Color]:
-        return self._repo.listar_colores_activos()
+    def listar_colores(self, empresa_id: int | None = None) -> list[Color]:
+        return self._repo.listar_colores_activos(empresa_id=empresa_id)
 
     def listar_productos(
         self,

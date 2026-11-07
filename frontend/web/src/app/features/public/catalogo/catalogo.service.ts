@@ -25,6 +25,9 @@ export class CatalogoService {
   private readonly baseUrl = `${environment.apiUrl}/catalogo`;
 
   listCategorias(empresaId?: number | null): Observable<CategoriaPublica[]> {
+    if (!this.connectivity.isOnline()) {
+      return from(this.getCategoriasOffline());
+    }
     let params = new HttpParams();
     if (empresaId !== null && empresaId !== undefined) {
       params = params.set('empresa_id', empresaId);
@@ -33,6 +36,9 @@ export class CatalogoService {
   }
 
   listColecciones(temporadaId?: number): Observable<ColeccionPublica[]> {
+    if (!this.connectivity.isOnline()) {
+      return from(this.getColeccionesOffline());
+    }
     let params = new HttpParams();
     if (temporadaId) {
       params = params.set('temporada_id', temporadaId);
@@ -247,5 +253,37 @@ export class CatalogoService {
     }
 
     throw new Error(`Producto ${id} no encontrado en información local.`);
+  }
+
+  private async getCategoriasOffline(): Promise<CategoriaPublica[]> {
+    const usuario = this.authService.usuario();
+    if (!usuario?.empresa_id) {
+      return [];
+    }
+
+    const preparaciones = await this.offlinePreparacion.obtenerTodasLasPreparaciones(
+      usuario.empresa_id,
+    );
+
+    const categoriasMap = new Map<number, CategoriaPublica>();
+    preparaciones.forEach((prep) => {
+      prep.productos.forEach((prod) => {
+        if (!categoriasMap.has(prod.categoria_id)) {
+          categoriasMap.set(prod.categoria_id, {
+            id: prod.categoria_id,
+            nombre: '',
+            imagen_url: null,
+          });
+        }
+      });
+    });
+
+    return Array.from(categoriasMap.values());
+  }
+
+  private async getColeccionesOffline(): Promise<ColeccionPublica[]> {
+    // Colecciones no están en la preparación de datos offline
+    // Retornar array vacío para evitar bloquear el catálogo
+    return [];
   }
 }

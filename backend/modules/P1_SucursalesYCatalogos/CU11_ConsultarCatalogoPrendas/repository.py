@@ -37,12 +37,18 @@ class CatalogoPublicoRepository:
         stmt = stmt.order_by(Coleccion.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
-    def listar_tallas_activas(self) -> list[Talla]:
-        stmt = select(Talla).where(Talla.is_active.is_(True)).order_by(Talla.nombre)
+    def listar_tallas_activas(self, empresa_id: int | None = None) -> list[Talla]:
+        stmt = select(Talla).where(Talla.is_active.is_(True))
+        if empresa_id is not None:
+            stmt = stmt.where(Talla.empresa_id == empresa_id)
+        stmt = stmt.order_by(Talla.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
-    def listar_colores_activos(self) -> list[Color]:
-        stmt = select(Color).where(Color.is_active.is_(True)).order_by(Color.nombre)
+    def listar_colores_activos(self, empresa_id: int | None = None) -> list[Color]:
+        stmt = select(Color).where(Color.is_active.is_(True))
+        if empresa_id is not None:
+            stmt = stmt.where(Color.empresa_id == empresa_id)
+        stmt = stmt.order_by(Color.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
     def listar_productos(
@@ -60,6 +66,9 @@ class CatalogoPublicoRepository:
         )
         if empresa_id is not None:
             stmt = stmt.where(Producto.empresa_id == empresa_id)
+            stmt = stmt.where(
+                Producto.coleccion.has(Coleccion.empresa_id == empresa_id)
+            )
         if search:
             stmt = stmt.where(func.lower(Producto.nombre).like(f"%{search.strip().lower()}%"))
         if categoria_id is not None:
