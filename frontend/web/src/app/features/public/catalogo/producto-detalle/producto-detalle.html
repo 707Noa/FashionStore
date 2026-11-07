@@ -42,7 +42,7 @@
                 (click)="seleccionarImagen(url)"
               >
                 @if (!erroredUrls().has(url)) {
-                  <img [src]="resolveMediaUrl(url)" alt="" (error)="marcarImagenRota(url)" />
+                  <img [src]="(url | offlineMedia | async) || resolveMediaUrl(url)" alt="" (error)="marcarImagenRota(url)" />
                 } @else {
                   <div class="gallery__thumb-placeholder">
                     <app-icon name="products" style="width: 16px; height: 16px" />
@@ -55,7 +55,7 @@
         <div class="gallery__main">
           @if (imagenActivaUrl() && !erroredUrls().has(imagenActivaUrl()!)) {
             <img
-              [src]="resolveMediaUrl(imagenActivaUrl())"
+              [src]="(imagenActivaUrl() | offlineMedia | async) || resolveMediaUrl(imagenActivaUrl())"
               [alt]="producto()!.nombre"
               (error)="marcarImagenRota(imagenActivaUrl()!)"
             />

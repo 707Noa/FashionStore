@@ -2,7 +2,7 @@
   <div class="card__image">
     @if (product().imagen_principal_url && !imageError()) {
       <img
-        [src]="resolveMediaUrl(product().imagen_principal_url)"
+        [src]="(product().imagen_principal_url | offlineMedia | async) || resolveMediaUrl(product().imagen_principal_url)"
         [alt]="product().nombre"
         (error)="imageError.set(true)"
       />

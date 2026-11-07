@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { resolveMediaUrl } from '../../../../core/utils/resolve-media-url';
+import { OfflineMediaPipe } from '../../../../core/pipes/offline-media.pipe';
 import { Icon } from '../../../../core/ui/icon/icon';
 import { CiudadPublica } from '../../sucursales/sucursal.model';
 import { SucursalPublicaService } from '../../sucursales/sucursal.service';
@@ -15,13 +16,13 @@ import { DisponibilidadService } from './disponibilidad.service';
 import { ConnectivityService } from '../../../../core/services/connectivity.service';
 import { OfflinePreparacionService } from '../../../operacion-offline/servicios/offline-preparacion.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { OfflinePreparacion } from '../../../../core/services/offline-storage.service';
+import { OfflinePreparacion, OfflineStorageService } from '../../../../core/services/offline-storage.service';
 
 const CIUDAD_STORAGE_KEY = 'fashionstore_ciudad_id';
 
 @Component({
   selector: 'app-producto-detalle',
-  imports: [RouterLink, Icon, FormsModule, CrearReserva, AgregarCarrito, CommonModule],
+  imports: [RouterLink, Icon, FormsModule, CrearReserva, AgregarCarrito, CommonModule, OfflineMediaPipe],
   templateUrl: './producto-detalle.html',
   styleUrl: './producto-detalle.scss',
 })
@@ -33,6 +34,7 @@ export class ProductoDetalle implements OnInit {
   private readonly connectivity = inject(ConnectivityService);
   private readonly offlinePreparacion = inject(OfflinePreparacionService);
   private readonly authService = inject(AuthService);
+  private readonly offlineStorage = inject(OfflineStorageService);
 
   protected readonly resolveMediaUrl = resolveMediaUrl;
 
@@ -232,6 +234,14 @@ export class ProductoDetalle implements OnInit {
   }
 
   private cargarCiudades(): void {
+    if (this.isOffline()) {
+      this.cargarCiudadesOffline();
+    } else {
+      this.cargarCiudadesOnline();
+    }
+  }
+
+  private cargarCiudadesOnline(): void {
     this.sucursalService.listCiudades().subscribe({
       next: (ciudades) => {
         this.ciudades.set(ciudades);
@@ -254,6 +264,40 @@ export class ProductoDetalle implements OnInit {
         this.errorDisponibilidad.set('No se pudieron cargar las ciudades. Inténtalo nuevamente.');
       },
     });
+  }
+
+  private async cargarCiudadesOffline(): Promise<void> {
+    const usuario = this.authService.usuario();
+    if (!usuario?.empresa_id) {
+      this.loadingCiudades.set(false);
+      this.errorDisponibilidad.set('No hay información disponible para consultar ciudades sin conexión.');
+      return;
+    }
+
+    try {
+      const ciudades = await this.offlineStorage.getCiudadesOffline(usuario.empresa_id);
+      if (ciudades.length === 0) {
+        this.loadingCiudades.set(false);
+        this.errorDisponibilidad.set('No hay ciudades disponibles en la información preparada.');
+        return;
+      }
+
+      this.ciudades.set(ciudades);
+      this.loadingCiudades.set(false);
+
+      const ciudadDeVuelta = ciudades.find((c) => c.id === this.ciudadIdParam);
+      const ciudadGuardada = ciudades.find((c) => c.id === this.leerCiudadGuardada());
+      const ciudadInicial = ciudadDeVuelta ?? ciudadGuardada ?? ciudades[0] ?? null;
+      if (ciudadInicial) {
+        this.ciudadId.set(ciudadInicial.id);
+        this.guardarCiudad(ciudadInicial.id);
+        this.loadDisponibilidad();
+      }
+    } catch (error) {
+      console.error('Error cargando ciudades offline:', error);
+      this.loadingCiudades.set(false);
+      this.errorDisponibilidad.set('Error al cargar ciudades desde información local.');
+    }
   }
 
   private leerCiudadGuardada(): number | null {
@@ -300,20 +344,85 @@ export class ProductoDetalle implements OnInit {
       return;
     }
 
+    if (this.isOffline()) {
+      void this.loadDisponibilidadOffline(producto.id, tallaId, colorId, ciudadId);
+    } else {
+      this.loadDisponibilidadOnline(producto.id, tallaId, colorId, ciudadId);
+    }
+  }
+
+  private loadDisponibilidadOnline(
+    productoId: number,
+    tallaId: number,
+    colorId: number,
+    ciudadId: number,
+  ): void {
     this.loadingDisponibilidad.set(true);
     this.errorDisponibilidad.set(null);
-    this.disponibilidadService.consultar(producto.id, tallaId, colorId, ciudadId).subscribe({
+    this.disponibilidadService.consultar(productoId, tallaId, colorId, ciudadId).subscribe({
       next: (respuesta) => {
-        this.disponibilidad.set(respuesta.disponibilidad);
-        this.loadingDisponibilidad.set(false);
-        this.restaurarSucursalSiCorresponde();
+        if (respuesta) {
+          console.log(`[CU07 AVAILABILITY] producto: ${productoId} | online: true | servicio: HTTP`);
+          this.disponibilidad.set(respuesta.disponibilidad);
+          this.loadingDisponibilidad.set(false);
+          this.restaurarSucursalSiCorresponde();
+        }
       },
-      error: () => {
-        this.loadingDisponibilidad.set(false);
-        this.disponibilidad.set([]);
-        this.errorDisponibilidad.set('No se pudo consultar la disponibilidad. Inténtalo nuevamente.');
+      error: async () => {
+        console.warn(`[CU07 AVAILABILITY] HTTP error — intentando fallback offline`);
+        // Si HTTP falla, intentar cargar offline
+        await this.loadDisponibilidadOffline(productoId, tallaId, colorId, ciudadId);
       },
     });
+  }
+
+  private async loadDisponibilidadOffline(
+    productoId: number,
+    tallaId: number,
+    colorId: number,
+    ciudadId: number,
+  ): Promise<void> {
+    const usuario = this.authService.usuario();
+    if (!usuario?.empresa_id) {
+      this.loadingDisponibilidad.set(false);
+      this.disponibilidad.set([]);
+      this.errorDisponibilidad.set('No hay información disponible para consultar disponibilidad sin conexión.');
+      return;
+    }
+
+    try {
+      this.loadingDisponibilidad.set(true);
+      this.errorDisponibilidad.set(null);
+
+      console.log(
+        `[CU07 AVAILABILITY] producto: ${productoId} | online: false | servicio: LOCAL`,
+      );
+
+      const disponibilidadCompleta = await this.offlineStorage.getDisponibilidadProductoOffline(
+        usuario.empresa_id,
+        productoId,
+      );
+
+      if (disponibilidadCompleta.length === 0) {
+        this.loadingDisponibilidad.set(false);
+        this.disponibilidad.set([]);
+        this.errorDisponibilidad.set('Producto no encontrado en información local.');
+        return;
+      }
+
+      console.log(
+        `[CU07 AVAILABILITY LOCAL] productos: ${disponibilidadCompleta.length} | variantes: ${disponibilidadCompleta.reduce((sum, s) => sum + s.variantes.length, 0)} | sucursales: ${disponibilidadCompleta.length}`,
+      );
+
+      this.disponibilidad.set(disponibilidadCompleta);
+      this.loadingDisponibilidad.set(false);
+      this.restaurarSucursalSiCorresponde();
+    } catch (error) {
+      console.error('Error cargando disponibilidad offline:', error);
+      this.loadingDisponibilidad.set(false);
+      this.disponibilidad.set([]);
+      this.errorDisponibilidad.set('Error al cargar disponibilidad desde información local.');
+    }
   }
 
   // Vuelta del login (ver returnUrlReserva/sucursalIdParam): si esa

@@ -1,6 +1,7 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, from } from 'rxjs';
+import { Observable, from, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { ProductoDisponibilidad, DisponibilidadSucursal, VarianteDisponible } from './disponibilidad.model';
 import { ConnectivityService } from '../../../../core/services/connectivity.service';
@@ -43,7 +44,33 @@ export class DisponibilidadService {
     if (ciudadId) {
       params = params.set('ciudad_id', ciudadId);
     }
-    return this.http.get<ProductoDisponibilidad>(this.baseUrl, { params });
+
+    return this.http.get<ProductoDisponibilidad>(this.baseUrl, { params }).pipe(
+      catchError((error: HttpErrorResponse) => {
+        // Si backend devuelve errores críticos (504, 503, 502, 500, 408, 429, 0),
+        // intentar fallback a disponibilidad offline
+        const isCriticalError =
+          error.status === 0 ||
+          error.status === 408 ||
+          error.status === 429 ||
+          error.status >= 500;
+
+        if (isCriticalError) {
+          console.warn(
+            `[CU07 AVAILABILITY FALLBACK] Backend error ${error.status || 'UNKNOWN'} — usando datos offline`,
+          );
+          return from(this.consultarOffline(productoId)).pipe(
+            catchError(() => {
+              // Si offline también falla, devolver error original
+              return of(undefined as any);
+            }),
+          );
+        }
+
+        // Para otros errores (4xx), propagar el error
+        throw error;
+      }),
+    );
   }
 
   private async consultarOffline(productoId: number): Promise<ProductoDisponibilidad> {
@@ -60,29 +87,52 @@ export class DisponibilidadService {
       throw new Error('No hay información disponible para consultar disponibilidad sin conexión.');
     }
 
-    const disponibilidad: DisponibilidadSucursal[] = [];
+    // Usar Map para deduplicar por sucursal_id
+    const disponibilidadMap = new Map<number, DisponibilidadSucursal>();
 
     preparaciones.forEach((prep) => {
       const producto = prep.productos.find((p) => p.id === productoId);
       if (producto) {
-        const variantes: VarianteDisponible[] = producto.variantes.map((v) => ({
-          producto_variante_id: v.id,
-          talla_id: v.talla_id,
-          talla: v.talla_nombre,
-          color_id: v.color_id,
-          color: v.color_nombre,
-          cantidad: v.stock_disponible,
-        }));
+        // Si esta sucursal ya existe en el map, combinar variantes
+        if (disponibilidadMap.has(prep.sucursal.id)) {
+          const existing = disponibilidadMap.get(prep.sucursal.id)!;
+          const nuevasVariantes: VarianteDisponible[] = producto.variantes.map((v) => ({
+            producto_variante_id: v.id,
+            talla_id: v.talla_id,
+            talla: v.talla_nombre,
+            color_id: v.color_id,
+            color: v.color_nombre,
+            cantidad: v.stock_disponible,
+          }));
 
-        disponibilidad.push({
-          sucursal_id: prep.sucursal.id,
-          sucursal: prep.sucursal.nombre,
-          ciudad_id: 0,
-          ciudad: prep.sucursal.ciudad || '',
-          variantes,
-        });
+          // Combinar variantes (evitar duplicadas por id)
+          const variantesMap = new Map<number, VarianteDisponible>();
+          existing.variantes.forEach((v) => variantesMap.set(v.producto_variante_id, v));
+          nuevasVariantes.forEach((v) => variantesMap.set(v.producto_variante_id, v));
+          existing.variantes = Array.from(variantesMap.values());
+        } else {
+          // Primera vez que vemos esta sucursal
+          const variantes: VarianteDisponible[] = producto.variantes.map((v) => ({
+            producto_variante_id: v.id,
+            talla_id: v.talla_id,
+            talla: v.talla_nombre,
+            color_id: v.color_id,
+            color: v.color_nombre,
+            cantidad: v.stock_disponible,
+          }));
+
+          disponibilidadMap.set(prep.sucursal.id, {
+            sucursal_id: prep.sucursal.id,
+            sucursal: prep.sucursal.nombre,
+            ciudad_id: 0,
+            ciudad: prep.sucursal.ciudad || '',
+            variantes,
+          });
+        }
       }
     });
+
+    const disponibilidad = Array.from(disponibilidadMap.values());
 
     if (disponibilidad.length === 0) {
       throw new Error(`Producto ${productoId} no encontrado en información local.`);

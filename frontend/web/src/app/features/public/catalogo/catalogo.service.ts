@@ -14,6 +14,7 @@ import {
 import { ConnectivityService } from '../../../core/services/connectivity.service';
 import { OfflinePreparacionService } from '../../operacion-offline/servicios/offline-preparacion.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { OfflineStorageService } from '../../../core/services/offline-storage.service';
 
 /** Consume el catálogo público de CU11 -- sin token, apto para Invitado y Cliente. */
 @Injectable({ providedIn: 'root' })
@@ -22,6 +23,7 @@ export class CatalogoService {
   private readonly connectivity = inject(ConnectivityService);
   private readonly offlinePreparacion = inject(OfflinePreparacionService);
   private readonly authService = inject(AuthService);
+  private readonly offlineStorage = inject(OfflineStorageService);
   private readonly baseUrl = `${environment.apiUrl}/catalogo`;
 
   listCategorias(empresaId?: number | null): Observable<CategoriaPublica[]> {
@@ -168,7 +170,7 @@ export class CatalogoService {
             precio_final: prod.precio_final,
             en_promocion: prod.en_promocion,
             porcentaje_descuento: prod.porcentaje_descuento,
-            imagen_principal_url: null,
+            imagen_principal_url: prod.imagen_principal_url,
             imagenes: [],
             categoria: { id: prod.categoria_id, nombre: '', imagen_url: null },
             temporada: { id: 0, nombre: '' },
@@ -240,7 +242,7 @@ export class CatalogoService {
           precio_final: producto.precio_final,
           en_promocion: producto.en_promocion,
           porcentaje_descuento: producto.porcentaje_descuento,
-          imagen_principal_url: null,
+          imagen_principal_url: producto.imagen_principal_url,
           imagenes: [],
           categoria: { id: producto.categoria_id, nombre: '', imagen_url: null },
           temporada: { id: 0, nombre: '' },
@@ -266,29 +268,36 @@ export class CatalogoService {
       return [];
     }
 
-    const preparaciones = await this.offlinePreparacion.obtenerTodasLasPreparaciones(
-      usuario.empresa_id,
-    );
-
-    const categoriasMap = new Map<number, CategoriaPublica>();
-    preparaciones.forEach((prep) => {
-      prep.productos.forEach((prod) => {
-        if (!categoriasMap.has(prod.categoria_id)) {
-          categoriasMap.set(prod.categoria_id, {
-            id: prod.categoria_id,
-            nombre: '',
-            imagen_url: null,
-          });
-        }
-      });
-    });
-
-    return Array.from(categoriasMap.values());
+    try {
+      const categorias = await this.offlineStorage.getCategoriasOffline(usuario.empresa_id);
+      return categorias.map((cat) => ({
+        id: cat.id,
+        nombre: cat.nombre,
+        imagen_url: null,
+      }));
+    } catch (error) {
+      console.error('Error al obtener categorías offline:', error);
+      return [];
+    }
   }
 
   private async getColeccionesOffline(): Promise<ColeccionPublica[]> {
-    // Colecciones no están en la preparación de datos offline
-    // Retornar array vacío para evitar bloquear el catálogo
-    return [];
+    const usuario = this.authService.usuario();
+    if (!usuario?.empresa_id) {
+      return [];
+    }
+
+    try {
+      const colecciones = await this.offlineStorage.getColeccionesOffline(usuario.empresa_id);
+      return colecciones.map((col) => ({
+        id: col.id,
+        nombre: col.nombre,
+        descripcion: col.descripcion,
+        temporada: col.temporada,
+      }));
+    } catch (error) {
+      console.error('Error al obtener colecciones offline:', error);
+      return [];
+    }
   }
 }

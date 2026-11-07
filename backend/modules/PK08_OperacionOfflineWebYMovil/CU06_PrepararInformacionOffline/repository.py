@@ -10,7 +10,9 @@ Actúa como orquestador de repositories existentes, reutilizando:
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from modules.P1_SucursalesYCatalogos.Models.categoria import Categoria
 from modules.P1_SucursalesYCatalogos.Models.color import Color
+from modules.P1_SucursalesYCatalogos.Models.coleccion import Coleccion
 from modules.P1_SucursalesYCatalogos.Models.producto import Producto
 from modules.P1_SucursalesYCatalogos.Models.producto_variante import ProductoVariante
 from modules.P1_SucursalesYCatalogos.Models.stock_sucursal import StockSucursal
@@ -84,4 +86,20 @@ class PreparacionOfflineRepository:
             Usuario.empresa_id == empresa_id,
             Usuario.is_active.is_(True)
         ).limit(100)
+        return list(self.db.execute(stmt).scalars().all())
+
+    def obtener_categorias(self, empresa_id: int) -> list[Categoria]:
+        """Obtiene categorías activas de la empresa."""
+        stmt = select(Categoria).where(
+            Categoria.empresa_id == empresa_id,
+            Categoria.is_active.is_(True)
+        ).order_by(Categoria.nombre)
+        return list(self.db.execute(stmt).scalars().all())
+
+    def obtener_colecciones(self, empresa_id: int) -> list[Coleccion]:
+        """Obtiene colecciones activas de la empresa."""
+        stmt = select(Coleccion).where(
+            Coleccion.empresa_id == empresa_id,
+            Coleccion.is_active.is_(True)
+        ).order_by(Coleccion.nombre)
         return list(self.db.execute(stmt).scalars().all())

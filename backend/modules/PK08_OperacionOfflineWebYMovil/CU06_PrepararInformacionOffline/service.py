@@ -14,6 +14,8 @@ from modules.P6_InnovacionYAnalisis.CU32_GestionarPromociones.precio_efectivo im
 
 from .repository import PreparacionOfflineRepository
 from .schemas import (
+    CategoriaOut,
+    ColeccionOut,
     ColorOut,
     ClienteMinimosOut,
     MetadataPreparacionOut,
@@ -21,6 +23,7 @@ from .schemas import (
     ProductoOut,
     SucursalOut,
     TallaOut,
+    TemporadaOut,
     VarianteOut,
 )
 
@@ -117,12 +120,14 @@ class PreparacionOfflineService:
                     id=prod.id,
                     nombre=prod.nombre,
                     categoria_id=prod.categoria_id,
+                    coleccion_id=prod.coleccion_id,
                     es_activo=prod.is_active,
                     variantes=variantes_out,
                     precio_base=float(precio_info.precio_base) if precio_info else float(prod.precio_venta),
                     precio_final=float(precio_info.precio_final) if precio_info else float(prod.precio_venta),
                     en_promocion=precio_info.en_promocion if precio_info else False,
                     porcentaje_descuento=float(precio_info.porcentaje_descuento) if precio_info and precio_info.porcentaje_descuento else None,
+                    imagen_principal_url=prod.imagen_principal_url,
                 ))
 
         # 4. Obtener catálogos
@@ -131,6 +136,22 @@ class PreparacionOfflineService:
 
         colores = self.repo.obtener_colores(empresa_id=empresa_id)
         colores_out = [ColorOut(id=c.id, nombre=c.nombre) for c in colores]
+
+        categorias = self.repo.obtener_categorias(empresa_id=empresa_id)
+        categorias_out = [CategoriaOut(id=c.id, nombre=c.nombre) for c in categorias]
+
+        colecciones = self.repo.obtener_colecciones(empresa_id=empresa_id)
+        colecciones_out = [
+            ColeccionOut(
+                id=col.id,
+                nombre=col.nombre,
+                descripcion=col.descripcion,
+                imagen_destacada_url=col.imagen_destacada_url,
+                es_destacada_inicio=col.es_destacada_inicio,
+                temporada=TemporadaOut(id=col.temporada.id, nombre=col.temporada.nombre),
+            )
+            for col in colecciones
+        ]
 
         # 5. Obtener clientes mínimos
         clientes = self.repo.obtener_clientes_minimos(empresa_id)
@@ -159,6 +180,8 @@ class PreparacionOfflineService:
             productos=productos_out,
             tallas=tallas_out,
             colores=colores_out,
+            categorias=categorias_out,
+            colecciones=colecciones_out,
             clientes_minimos=clientes_out,
             metadata=metadata,
         )

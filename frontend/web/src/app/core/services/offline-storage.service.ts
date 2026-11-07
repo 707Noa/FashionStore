@@ -1,5 +1,15 @@
 import { Injectable } from '@angular/core';
 
+function hash(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    h = (h << 5) - h + char;
+    h = h & h; // Convert to 32bit integer
+  }
+  return Math.abs(h);
+}
+
 export interface OfflinePreparacion {
   sucursal: {
     id: number;
@@ -11,11 +21,13 @@ export interface OfflinePreparacion {
     id: number;
     nombre: string;
     categoria_id: number;
+    coleccion_id: number;
     es_activo: boolean;
     precio_base: number;
     precio_final: number;
     en_promocion: boolean;
     porcentaje_descuento: number | null;
+    imagen_principal_url: string | null;
     variantes: Array<{
       id: number;
       producto_id: number;
@@ -34,6 +46,18 @@ export interface OfflinePreparacion {
   colores: Array<{
     id: number;
     nombre: string;
+  }>;
+  categorias: Array<{
+    id: number;
+    nombre: string;
+  }>;
+  colecciones: Array<{
+    id: number;
+    nombre: string;
+    descripcion: string | null;
+    imagen_destacada_url: string | null;
+    es_destacada_inicio: boolean;
+    temporada: { id: number; nombre: string };
   }>;
   clientes_minimos: Array<{
     id: number;
@@ -276,18 +300,214 @@ export class OfflineStorageService {
   }
 
   private normalizarPreparacion(prep: OfflinePreparacion): OfflinePreparacion {
-    // Normalización defensiva para datos legacy en IndexedDB:
-    // Si los datos anteriores guardaron precio como string, convertir a number.
-    // Nuevos datos del backend (con float explícito) llegarán como number.
+    // Normalización defensiva para datos legacy y validación de precios.
     return {
       ...prep,
-      productos: prep.productos.map((prod) => ({
-        ...prod,
-        variantes: prod.variantes.map((v) => ({
-          ...v,
-          precio: typeof v.precio === 'string' ? parseFloat(v.precio) : v.precio,
-        })),
-      })),
+      productos: prep.productos.map((prod) => {
+        const precioBase = this.normalizarPrecio(prod.precio_base);
+        const precioFinal = this.normalizarPrecio(prod.precio_final);
+        const porcentajeDesc = prod.porcentaje_descuento
+          ? this.normalizarPrecio(prod.porcentaje_descuento)
+          : null;
+
+        return {
+          ...prod,
+          precio_base: precioBase,
+          precio_final: precioFinal,
+          porcentaje_descuento: porcentajeDesc,
+          variantes: prod.variantes.map((v) => ({
+            ...v,
+            precio: this.normalizarPrecio(v.precio),
+          })),
+        };
+      }),
     };
+  }
+
+  private normalizarPrecio(valor: any): number {
+    const num = typeof valor === 'string' ? parseFloat(valor) : Number(valor);
+    if (!isFinite(num)) {
+      console.warn(`Precio inválido recibido: ${valor}, usando 0`);
+      return 0;
+    }
+    return num;
+  }
+
+  async getDisponibilidadProductoOffline(
+    empresaId: number,
+    productoId: number,
+  ): Promise<Array<{
+    sucursal_id: number;
+    sucursal: string;
+    ciudad_id: number;
+    ciudad: string;
+    variantes: Array<{
+      producto_variante_id: number;
+      talla_id: number;
+      talla: string;
+      color_id: number;
+      color: string;
+      cantidad: number;
+    }>;
+  }>> {
+    try {
+      const preparaciones = await this.getAllPreparaciones(empresaId);
+
+      // Deduplicar por sucursal_id usando Map
+      const disponibilidadMap = new Map<number, {
+        sucursal_id: number;
+        sucursal: string;
+        ciudad_id: number;
+        ciudad: string;
+        variantes: Array<{
+          producto_variante_id: number;
+          talla_id: number;
+          talla: string;
+          color_id: number;
+          color: string;
+          cantidad: number;
+        }>;
+      }>();
+
+      for (const prep of preparaciones) {
+        const producto = prep.productos.find((p) => p.id === productoId);
+        if (!producto) {
+          continue;
+        }
+
+        const ciudadId = hash(prep.sucursal.ciudad || 'sin-ciudad');
+
+        // Si ya existe esta sucursal, combinar variantes
+        if (disponibilidadMap.has(prep.sucursal.id)) {
+          const existing = disponibilidadMap.get(prep.sucursal.id)!;
+          const nuevasVariantes = producto.variantes.map((v) => ({
+            producto_variante_id: v.id,
+            talla_id: v.talla_id,
+            talla: v.talla_nombre,
+            color_id: v.color_id,
+            color: v.color_nombre,
+            cantidad: v.stock_disponible,
+          }));
+
+          // Deduplicar variantes por producto_variante_id
+          const variantesMap = new Map();
+          existing.variantes.forEach((v) => variantesMap.set(v.producto_variante_id, v));
+          nuevasVariantes.forEach((v) => variantesMap.set(v.producto_variante_id, v));
+          existing.variantes = Array.from(variantesMap.values());
+        } else {
+          // Primera vez que vemos esta sucursal
+          disponibilidadMap.set(prep.sucursal.id, {
+            sucursal_id: prep.sucursal.id,
+            sucursal: prep.sucursal.nombre,
+            ciudad_id: ciudadId,
+            ciudad: prep.sucursal.ciudad || 'Sin ciudad',
+            variantes: producto.variantes.map((v) => ({
+              producto_variante_id: v.id,
+              talla_id: v.talla_id,
+              talla: v.talla_nombre,
+              color_id: v.color_id,
+              color: v.color_nombre,
+              cantidad: v.stock_disponible,
+            })),
+          });
+        }
+      }
+
+      return Array.from(disponibilidadMap.values());
+    } catch (error) {
+      console.error('Error al obtener disponibilidad offline:', error);
+      return [];
+    }
+  }
+
+  async getCiudadesOffline(empresaId: number): Promise<Array<{ id: number; nombre: string }>> {
+    try {
+      const preparaciones = await this.getAllPreparaciones(empresaId);
+      const ciudadesMap = new Map<number, string>();
+
+      for (const prep of preparaciones) {
+        const ciudadId = hash(prep.sucursal.ciudad || 'sin-ciudad');
+        if (!ciudadesMap.has(ciudadId)) {
+          ciudadesMap.set(ciudadId, prep.sucursal.ciudad || 'Sin ciudad');
+        }
+      }
+
+      return Array.from(ciudadesMap, ([id, nombre]) => ({ id, nombre }));
+    } catch (error) {
+      console.error('Error al obtener ciudades offline:', error);
+      return [];
+    }
+  }
+
+  async getCategoriasOffline(empresaId: number): Promise<Array<{ id: number; nombre: string }>> {
+    try {
+      const preparaciones = await this.getAllPreparaciones(empresaId);
+      const categoriasMap = new Map<number, string>();
+
+      for (const prep of preparaciones) {
+        // Defensivo: categorias puede no existir en datos antiguos
+        if (prep.categorias && Array.isArray(prep.categorias)) {
+          for (const cat of prep.categorias) {
+            if (!categoriasMap.has(cat.id)) {
+              categoriasMap.set(cat.id, cat.nombre);
+            }
+          }
+        }
+      }
+
+      return Array.from(categoriasMap, ([id, nombre]) => ({ id, nombre }));
+    } catch (error) {
+      console.error('Error al obtener categorías offline:', error);
+      return [];
+    }
+  }
+
+  async getColeccionesOffline(empresaId: number): Promise<
+    Array<{
+      id: number;
+      nombre: string;
+      descripcion: string | null;
+      imagen_destacada_url: string | null;
+      es_destacada_inicio: boolean;
+      temporada: { id: number; nombre: string };
+    }>
+  > {
+    try {
+      const preparaciones = await this.getAllPreparaciones(empresaId);
+      const coleccionesMap = new Map<
+        number,
+        {
+          id: number;
+          nombre: string;
+          descripcion: string | null;
+          imagen_destacada_url: string | null;
+          es_destacada_inicio: boolean;
+          temporada: { id: number; nombre: string };
+        }
+      >();
+
+      for (const prep of preparaciones) {
+        // Defensivo: colecciones puede no existir en datos antiguos
+        if (prep.colecciones && Array.isArray(prep.colecciones)) {
+          for (const col of prep.colecciones) {
+            if (!coleccionesMap.has(col.id)) {
+              coleccionesMap.set(col.id, {
+                id: col.id,
+                nombre: col.nombre,
+                descripcion: col.descripcion,
+                imagen_destacada_url: col.imagen_destacada_url,
+                es_destacada_inicio: col.es_destacada_inicio,
+                temporada: col.temporada,
+              });
+            }
+          }
+        }
+      }
+
+      return Array.from(coleccionesMap.values());
+    } catch (error) {
+      console.error('Error al obtener colecciones offline:', error);
+      return [];
+    }
   }
 }

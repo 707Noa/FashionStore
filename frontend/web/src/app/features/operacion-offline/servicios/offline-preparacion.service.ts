@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { OfflinePreparacion, OfflineStorageService } from '../../../core/services/offline-storage.service';
+import { OfflineImageCacheService } from '../../../core/services/offline-image-cache.service';
 
 @Injectable({
   providedIn: 'root',
@@ -13,6 +14,7 @@ export class OfflinePreparacionService {
   constructor(
     private http: HttpClient,
     private offlineStorage: OfflineStorageService,
+    private imageCache: OfflineImageCacheService,
   ) {}
 
   /**
@@ -28,6 +30,7 @@ export class OfflinePreparacionService {
   /**
    * Guarda la preparación en IndexedDB después de obtenerla del backend.
    * Valida que los datos correspondan a la empresa/sucursal preparada.
+   * Cachea las imágenes de productos para disponibilidad offline.
    */
   async guardarPreparacion(
     preparacion: OfflinePreparacion,
@@ -55,6 +58,11 @@ export class OfflinePreparacionService {
         console.error('Error: No se pudo verificar la escritura en IndexedDB');
         return false;
       }
+
+      // Cachear imágenes de productos (no-blocking, no debe fallar si hay error)
+      this.imageCache.cacheProductImages(preparacion.productos).catch((error) => {
+        console.warn('Advertencia: No se pudo cachear imágenes de productos:', error);
+      });
 
       return true;
     } catch (error) {

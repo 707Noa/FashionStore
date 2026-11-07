@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.image_storage import UPLOADS_ROOT
@@ -111,6 +110,9 @@ from modules.P6_InnovacionYAnalisis.CU30_ConsultarReportesIndicadores.router imp
 from modules.PK08_OperacionOfflineWebYMovil.CU06_PrepararInformacionOffline.router import (
     router as cu06_offline_router,
 )
+from modules.PK08_OperacionOfflineWebYMovil.CU06_PrepararInformacionOffline.media_router import (
+    router as media_router,
+)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -170,12 +172,10 @@ app.include_router(cu32_promociones_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu29_asistente_ia_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu30_reportes_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu06_offline_router, prefix=settings.API_V1_PREFIX)
+app.include_router(media_router, prefix=settings.API_V1_PREFIX)
 
-# Sirve las imágenes subidas por el Administrador (CU08/CU09) -- ver
-# app/core/image_storage.py. Montado bajo API_V1_PREFIX para que Nginx, que ya
-# reenvía "/api/" al backend, sirva estas URLs sin configuración adicional.
+# Crear directorio de uploads (servido por media_router que pasa por CORSMiddleware)
 UPLOADS_ROOT.mkdir(parents=True, exist_ok=True)
-app.mount(f"{settings.API_V1_PREFIX}/media", StaticFiles(directory=str(UPLOADS_ROOT)), name="media")
 
 
 @app.get("/", tags=["root"])

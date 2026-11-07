@@ -8,10 +8,9 @@
       "resources": {
         "files": [
           "/favicon.ico",
-          "/index.html",
-          "/manifest.json",
-          "/*.css",
-          "/*.js"
+          "/manifest.webmanifest",
+          "/**/*.css",
+          "/**/*.js"
         ]
       }
     },
@@ -22,37 +21,33 @@
       "resources": {
         "files": [
           "/assets/**",
-          "/**/.*",
-          "/**/*",
-          "!/**/*.map"
+          "/**/**.svg"
         ]
+      }
+    },
+    {
+      "name": "images",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": {
+        "urls": [
+          "/api/v1/media/**"
+        ]
+      },
+      "cacheConfig": {
+        "maxSize": 104857600,
+        "maxAge": "30d"
       }
     }
   ],
   "dataGroups": [
     {
-      "name": "api-health",
-      "urls": ["/api/v1/health"],
-      "cacheConfig": {
-        "strategy": "network-only"
-      }
-    },
-    {
-      "name": "api-offline-prepare",
-      "urls": ["/api/v1/offline/preparar"],
-      "cacheConfig": {
-        "strategy": "performance",
-        "maxAge": "24h",
-        "maxSize": 10
-      }
-    },
-    {
-      "name": "api-general",
+      "name": "api-default",
       "urls": ["/api/v1/**"],
       "cacheConfig": {
-        "strategy": "performance",
-        "maxAge": "1d",
-        "maxSize": 100
+        "strategy": "freshness",
+        "maxAge": "1h",
+        "maxSize": 20971520
       }
     }
   ]

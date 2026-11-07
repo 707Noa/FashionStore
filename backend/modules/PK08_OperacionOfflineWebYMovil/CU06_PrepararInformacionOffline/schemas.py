@@ -31,6 +31,37 @@ class ColorOut(BaseModel):
         from_attributes = True
 
 
+class CategoriaOut(BaseModel):
+    """Categoría para almacenamiento local."""
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+
+class TemporadaOut(BaseModel):
+    """Temporada para almacenamiento local."""
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+
+class ColeccionOut(BaseModel):
+    """Colección para almacenamiento local."""
+    id: int
+    nombre: str
+    descripcion: str | None
+    imagen_destacada_url: str | None
+    es_destacada_inicio: bool
+    temporada: TemporadaOut
+
+    class Config:
+        from_attributes = True
+
+
 class VarianteOut(BaseModel):
     """Variante de producto con disponibilidad."""
     id: int
@@ -55,12 +86,14 @@ class ProductoOut(BaseModel):
     id: int
     nombre: str
     categoria_id: int
+    coleccion_id: int
     es_activo: bool
     variantes: list[VarianteOut]
     precio_base: float
     precio_final: float
     en_promocion: bool
     porcentaje_descuento: float | None
+    imagen_principal_url: str | None = None
 
     class Config:
         from_attributes = True
@@ -102,6 +135,8 @@ class PreparacionOfflineOut(BaseModel):
     productos: list[ProductoOut]
     tallas: list[TallaOut]
     colores: list[ColorOut]
+    categorias: list[CategoriaOut]
+    colecciones: list[ColeccionOut]
     clientes_minimos: list[ClienteMinimosOut]
     metadata: MetadataPreparacionOut
 
