@@ -59,13 +59,7 @@ promocion_productos = Table(
     "promocion_productos",
     Base.metadata,
     Column("promocion_id", ForeignKey("promociones.id", ondelete="CASCADE"), primary_key=True),
-    Column("empresa_id", ForeignKey("empresas.id"), primary_key=True),
-    Column("producto_id", primary_key=False),
-    ForeignKeyConstraint(
-        ["empresa_id", "producto_id"],
-        ["productos.empresa_id", "productos.id"],
-        name="fk_promocion_productos_producto_compuesto"
-    ),
+    Column("producto_id", ForeignKey("productos.id"), primary_key=True),
 )
 
 

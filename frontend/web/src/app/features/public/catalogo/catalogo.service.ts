@@ -61,7 +61,7 @@ export class CatalogoService {
   }
 
   listProductos(query?: CatalogoProductosQuery): Observable<ProductoPublico[]> {
-    if (!this.connectivity.isOnline()) {
+    if (!navigator.onLine) {
       return from(this.getProductosOffline(query));
     }
 
@@ -88,7 +88,7 @@ export class CatalogoService {
   }
 
   getProducto(id: number): Observable<ProductoPublico> {
-    if (!this.connectivity.isOnline()) {
+    if (!navigator.onLine) {
       return from(this.getProductoOffline(id));
     }
     return this.http.get<ProductoPublico>(`${this.baseUrl}/productos/${id}`);
@@ -144,7 +144,7 @@ export class CatalogoService {
       throw new Error('No hay información disponible para consultar el catálogo sin conexión.');
     }
 
-    const preparaciones = await this.offlinePreparacion.obtenerTodasLasPreparaciones(
+    let preparaciones = await this.offlinePreparacion.obtenerTodasLasPreparaciones(
       usuario.empresa_id,
     );
 
@@ -157,15 +157,17 @@ export class CatalogoService {
     preparaciones.forEach((prep) => {
       prep.productos.forEach((prod) => {
         if (prod.es_activo && !productosSet.has(prod.id)) {
-          productosSet.set(prod.id, {
+          // Backend (CU06) ya calcula precios efectivos con promociones
+          const precio_venta = prod.variantes?.[0]?.precio ?? 0;
+          const producto: ProductoPublico = {
             id: prod.id,
             nombre: prod.nombre,
             descripcion: null,
-            precio_venta: prod.variantes.length > 0 ? prod.variantes[0].precio : 0,
-            precio_base: prod.variantes.length > 0 ? prod.variantes[0].precio : 0,
-            precio_final: prod.variantes.length > 0 ? prod.variantes[0].precio : 0,
-            en_promocion: false,
-            porcentaje_descuento: null,
+            precio_venta: precio_venta,
+            precio_base: prod.precio_base,
+            precio_final: prod.precio_final,
+            en_promocion: prod.en_promocion,
+            porcentaje_descuento: prod.porcentaje_descuento,
             imagen_principal_url: null,
             imagenes: [],
             categoria: { id: prod.categoria_id, nombre: '', imagen_url: null },
@@ -173,7 +175,8 @@ export class CatalogoService {
             coleccion: { id: 0, nombre: '', descripcion: null, temporada: { id: 0, nombre: '' } },
             tallas: [],
             colores: [],
-          });
+          };
+          productosSet.set(prod.id, producto);
         }
       });
     });
@@ -225,17 +228,18 @@ export class CatalogoService {
           nombre: colorMap.get(v.color_id) || '',
         }));
 
-        const precio = producto.variantes.length > 0 ? producto.variantes[0].precio : 0;
+        // Backend (CU06) ya calcula precios efectivos con promociones
+        const precio_venta = producto.variantes?.[0]?.precio ?? 0;
 
         return {
           id: producto.id,
           nombre: producto.nombre,
           descripcion: null,
-          precio_venta: precio,
-          precio_base: precio,
-          precio_final: precio,
-          en_promocion: false,
-          porcentaje_descuento: null,
+          precio_venta: precio_venta,
+          precio_base: producto.precio_base,
+          precio_final: producto.precio_final,
+          en_promocion: producto.en_promocion,
+          porcentaje_descuento: producto.porcentaje_descuento,
           imagen_principal_url: null,
           imagenes: [],
           categoria: { id: producto.categoria_id, nombre: '', imagen_url: null },
@@ -254,6 +258,7 @@ export class CatalogoService {
 
     throw new Error(`Producto ${id} no encontrado en información local.`);
   }
+
 
   private async getCategoriasOffline(): Promise<CategoriaPublica[]> {
     const usuario = this.authService.usuario();

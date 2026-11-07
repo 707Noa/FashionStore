@@ -20,17 +20,12 @@ class Coleccion(Base):
     __tablename__ = "colecciones"
     __table_args__ = (
         UniqueConstraint("empresa_id", "nombre", name="uq_coleccion_empresa_nombre"),
-        ForeignKeyConstraint(
-            ["empresa_id", "temporada_id"],
-            ["temporadas.empresa_id", "temporadas.id"],
-            name="fk_coleccion_temporada_compuesto"
-        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresas.id"), nullable=False)
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
-    temporada_id: Mapped[int] = mapped_column(nullable=False)
+    temporada_id: Mapped[int] = mapped_column(ForeignKey("temporadas.id"), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 

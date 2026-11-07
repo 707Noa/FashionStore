@@ -8,6 +8,9 @@ from modules.P7_GestionSaaSySuscripciones.CU05_GestionarSuscripcionEmpresa.servi
     CapacidadesEmpresa,
     FuncionalidadNoHabilitadaError,
 )
+from modules.P6_InnovacionYAnalisis.CU32_GestionarPromociones.precio_efectivo import (
+    obtener_precios_efectivos,
+)
 
 from .repository import PreparacionOfflineRepository
 from .schemas import (
@@ -80,6 +83,9 @@ class PreparacionOfflineService:
         # 3. Obtener productos de la empresa
         productos_db = self.repo.obtener_productos(empresa_id)
 
+        # Calcular precios efectivos (con promociones) igual que CU11
+        precios_efectivos = obtener_precios_efectivos(self.db, productos_db)
+
         productos_out = []
         for prod in productos_db:
             # Obtener variantes de este producto
@@ -90,6 +96,9 @@ class PreparacionOfflineService:
                 # Obtener stock disponible para esta sucursal
                 stock = self.repo.obtener_stock(var.id, sucursal_id)
 
+                # Convertir Decimal a float explícitamente para evitar serialización como string
+                precio_float = float(prod.precio_venta)
+
                 variantes_out.append(VarianteOut(
                     id=var.id,
                     producto_id=var.producto_id,
@@ -97,17 +106,23 @@ class PreparacionOfflineService:
                     talla_nombre=var.talla.nombre,
                     color_id=var.color_id,
                     color_nombre=var.color.nombre,
-                    precio=prod.precio_venta,
+                    precio=precio_float,
                     stock_disponible=stock,
                 ))
 
             if variantes_out:  # Solo incluir si tiene variantes
+                # Obtener precio efectivo (con promoción si aplica)
+                precio_info = precios_efectivos.get(prod.id)
                 productos_out.append(ProductoOut(
                     id=prod.id,
                     nombre=prod.nombre,
                     categoria_id=prod.categoria_id,
                     es_activo=prod.is_active,
                     variantes=variantes_out,
+                    precio_base=float(precio_info.precio_base) if precio_info else float(prod.precio_venta),
+                    precio_final=float(precio_info.precio_final) if precio_info else float(prod.precio_venta),
+                    en_promocion=precio_info.en_promocion if precio_info else False,
+                    porcentaje_descuento=float(precio_info.porcentaje_descuento) if precio_info and precio_info.porcentaje_descuento else None,
                 ))
 
         # 4. Obtener catálogos

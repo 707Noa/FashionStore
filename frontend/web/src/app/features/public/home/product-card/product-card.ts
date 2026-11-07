@@ -23,7 +23,6 @@ export class ProductCard {
     // Si la imagen referenciada ya no existe físicamente (ej. archivo perdido),
     // el navegador dispara (error) -- se cae al ícono, nunca al roto nativo.
     effect(() => {
-      this.product();
       this.imageError.set(false);
     });
   }

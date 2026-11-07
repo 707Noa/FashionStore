@@ -12,6 +12,10 @@ export interface OfflinePreparacion {
     nombre: string;
     categoria_id: number;
     es_activo: boolean;
+    precio_base: number;
+    precio_final: number;
+    en_promocion: boolean;
+    porcentaje_descuento: number | null;
     variantes: Array<{
       id: number;
       producto_id: number;
@@ -59,7 +63,7 @@ export class OfflineStorageService {
 
   private initializeDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, 1);
+      const request = indexedDB.open(this.dbName, 2);
 
       request.onerror = () => {
         const error = new Error('Error al abrir IndexedDB');
@@ -146,7 +150,7 @@ export class OfflineStorageService {
       const request = store.get(`${empresaId}_${sucursalId}`);
 
       request.onsuccess = () => {
-        result = request.result ? request.result.data : null;
+        result = request.result ? this.normalizarPreparacion(request.result.data) : null;
       };
 
       request.onerror = () => {
@@ -184,7 +188,7 @@ export class OfflineStorageService {
       request.onsuccess = () => {
         const rawResults = request.result || [];
         console.log(`Obtenidas ${rawResults.length} preparaciones para empresa ${empresaId}`);
-        results = rawResults.map((r) => r.data);
+        results = rawResults.map((r) => this.normalizarPreparacion(r.data));
       };
 
       request.onerror = () => {
@@ -269,5 +273,21 @@ export class OfflineStorageService {
         reject(new Error(`Transaction error: ${transaction.error?.message}`));
       };
     });
+  }
+
+  private normalizarPreparacion(prep: OfflinePreparacion): OfflinePreparacion {
+    // Normalización defensiva para datos legacy en IndexedDB:
+    // Si los datos anteriores guardaron precio como string, convertir a number.
+    // Nuevos datos del backend (con float explícito) llegarán como number.
+    return {
+      ...prep,
+      productos: prep.productos.map((prod) => ({
+        ...prod,
+        variantes: prod.variantes.map((v) => ({
+          ...v,
+          precio: typeof v.precio === 'string' ? parseFloat(v.precio) : v.precio,
+        })),
+      })),
+    };
   }
 }

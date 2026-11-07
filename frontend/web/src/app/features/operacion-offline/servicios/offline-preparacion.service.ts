@@ -65,6 +65,7 @@ export class OfflinePreparacionService {
 
   /**
    * Obtiene una preparación guardada para una empresa y sucursal.
+   * El backend garantiza que precio es number, así que no necesita normalización.
    */
   async obtenerPreparacion(empresaId: number, sucursalId: number): Promise<OfflinePreparacion | null> {
     try {
@@ -77,6 +78,7 @@ export class OfflinePreparacionService {
 
   /**
    * Obtiene todas las preparaciones guardadas de una empresa.
+   * El backend garantiza que precio es number en JSON.
    */
   async obtenerTodasLasPreparaciones(empresaId: number): Promise<OfflinePreparacion[]> {
     try {

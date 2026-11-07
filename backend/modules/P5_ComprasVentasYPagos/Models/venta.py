@@ -116,19 +116,13 @@ class OrigenVenta(str, enum.Enum):
 
 class Venta(Base):
     __tablename__ = "ventas"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["empresa_id", "sucursal_id"],
-            ["sucursales.empresa_id", "sucursales.id"],
-            name="fk_venta_sucursal_compuesto"
-        ),
-    )
+    __table_args__ = ()
 
     id: Mapped[int] = mapped_column(primary_key=True)
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresas.id"), nullable=False)
     codigo_venta: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     cliente_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
-    sucursal_id: Mapped[int] = mapped_column(nullable=False)
+    sucursal_id: Mapped[int] = mapped_column(ForeignKey("sucursales.id"), nullable=False)
     tipo: Mapped[TipoVenta] = mapped_column(SAEnum(TipoVenta, name="tipo_venta"), nullable=False)
     estado: Mapped[EstadoVenta] = mapped_column(
         SAEnum(EstadoVenta, name="estado_venta"), nullable=False, default=EstadoVenta.PENDIENTE_PAGO

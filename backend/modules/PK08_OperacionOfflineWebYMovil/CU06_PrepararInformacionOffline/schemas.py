@@ -1,7 +1,6 @@
 """Schemas para CU6 — Preparar información offline."""
 
 from datetime import datetime
-from decimal import Decimal
 from pydantic import BaseModel
 
 
@@ -40,7 +39,7 @@ class VarianteOut(BaseModel):
     talla_nombre: str
     color_id: int
     color_nombre: str
-    precio: Decimal
+    precio: float
     stock_disponible: int
 
     class Config:
@@ -48,12 +47,20 @@ class VarianteOut(BaseModel):
 
 
 class ProductoOut(BaseModel):
-    """Producto con variantes para almacenamiento local."""
+    """Producto con variantes para almacenamiento local.
+
+    Incluye precios calculados (CU32 -- Gestionar promociones):
+    precio_base y precio_final se calculan igual que en CU11 usando obtener_precios_efectivos().
+    """
     id: int
     nombre: str
     categoria_id: int
     es_activo: bool
     variantes: list[VarianteOut]
+    precio_base: float
+    precio_final: float
+    en_promocion: bool
+    porcentaje_descuento: float | None
 
     class Config:
         from_attributes = True

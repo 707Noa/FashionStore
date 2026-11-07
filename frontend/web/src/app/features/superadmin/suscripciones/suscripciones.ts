@@ -70,6 +70,12 @@ export class SuperadminSuscripciones implements OnInit {
     let cargadas = 0;
     const total = empresas.length;
 
+    if (total === 0) {
+      this.detallesMap.set(detalles);
+      this.loading.set(false);
+      return;
+    }
+
     empresas.forEach((empresa) => {
       this.superadminService.getSuscripcionEmpresa(empresa.id).subscribe({
         next: (data) => {

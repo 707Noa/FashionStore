@@ -41,41 +41,20 @@ from .temporada import Temporada
 
 class Producto(Base):
     __tablename__ = "productos"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["empresa_id", "categoria_id"],
-            ["categorias.empresa_id", "categorias.id"],
-            name="fk_producto_categoria_compuesto"
-        ),
-        ForeignKeyConstraint(
-            ["empresa_id", "temporada_id"],
-            ["temporadas.empresa_id", "temporadas.id"],
-            name="fk_producto_temporada_compuesto"
-        ),
-        ForeignKeyConstraint(
-            ["empresa_id", "coleccion_id"],
-            ["colecciones.empresa_id", "colecciones.id"],
-            name="fk_producto_coleccion_compuesto"
-        ),
-        ForeignKeyConstraint(
-            ["empresa_id", "proveedor_id"],
-            ["proveedores.empresa_id", "proveedores.id"],
-            name="fk_producto_proveedor_compuesto"
-        ),
-    )
+    __table_args__ = ()
 
     id: Mapped[int] = mapped_column(primary_key=True)
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresas.id"), nullable=False)
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    proveedor_id: Mapped[int] = mapped_column(nullable=False)
+    proveedor_id: Mapped[int] = mapped_column(ForeignKey("proveedores.id"), nullable=False)
     producto_proveedor_id: Mapped[int | None] = mapped_column(
         ForeignKey("productos_proveedor.id"), unique=True, nullable=True
     )
-    categoria_id: Mapped[int] = mapped_column(nullable=False)
-    temporada_id: Mapped[int] = mapped_column(nullable=False)
-    coleccion_id: Mapped[int] = mapped_column(nullable=False)
+    categoria_id: Mapped[int] = mapped_column(ForeignKey("categorias.id"), nullable=False)
+    temporada_id: Mapped[int] = mapped_column(ForeignKey("temporadas.id"), nullable=False)
+    coleccion_id: Mapped[int] = mapped_column(ForeignKey("colecciones.id"), nullable=False)
 
     precio_venta: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     imagen_principal_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

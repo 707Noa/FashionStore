@@ -134,19 +134,13 @@ class Reserva(Base):
     Multitenant: cada reserva pertenece a una empresa a través de su sucursal."""
 
     __tablename__ = "reservas"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["empresa_id", "sucursal_id"],
-            ["sucursales.empresa_id", "sucursales.id"],
-            name="fk_reserva_sucursal_compuesto"
-        ),
-    )
+    __table_args__ = ()
 
     id: Mapped[int] = mapped_column(primary_key=True)
     empresa_id: Mapped[int] = mapped_column(ForeignKey("empresas.id"), nullable=False)
     codigo_reserva: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     cliente_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
-    sucursal_id: Mapped[int] = mapped_column(nullable=False)
+    sucursal_id: Mapped[int] = mapped_column(ForeignKey("sucursales.id"), nullable=False)
     fecha_reserva: Mapped[date] = mapped_column(Date, nullable=False)
     hora_inicio: Mapped[time] = mapped_column(Time, nullable=False)
     estado_general: Mapped[EstadoReserva] = mapped_column(
