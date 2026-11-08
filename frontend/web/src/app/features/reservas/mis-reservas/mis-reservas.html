@@ -43,12 +43,19 @@
           <div class="reserva-card__header">
             <div class="reserva-card__header-top">
               <span class="reserva-card__codigo">Reserva {{ reserva.codigo_reserva }}</span>
-              <span
-                class="reserva-card__estado"
-                [class]="'reserva-card__estado--' + reserva.estado_general.toLowerCase()"
-              >
-                {{ etiquetaEstadoReserva(reserva.estado_general) }}
-              </span>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span
+                  class="reserva-card__estado"
+                  [class]="'reserva-card__estado--' + reserva.estado_general.toLowerCase()"
+                >
+                  {{ etiquetaEstadoReserva(reserva.estado_general) }}
+                </span>
+                @if (reserva._origen === 'LOCAL') {
+                  <span style="font-size: 12px; color: #FF6B35; background: rgba(255, 107, 53, 0.1); padding: 4px 8px; border-radius: 4px; white-space: nowrap;">
+                    Pendiente de sincronización
+                  </span>
+                }
+              </div>
             </div>
 
             <div class="reserva-card__sucursal">
@@ -94,11 +101,13 @@
                   </span>
                 </div>
 
-                <app-cancelar-reserva
-                  [reserva]="reserva"
-                  [detalle]="detalle"
-                  (cancelada)="onDetalleCancelado(reserva.id, $event)"
-                />
+                @if (reserva._origen !== 'LOCAL') {
+                  <app-cancelar-reserva
+                    [reserva]="reserva"
+                    [detalle]="detalle"
+                    (cancelada)="onDetalleCancelado(reserva.id, $event)"
+                  />
+                }
               </li>
             }
           </ul>

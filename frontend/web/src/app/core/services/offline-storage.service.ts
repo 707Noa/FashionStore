@@ -745,6 +745,80 @@ export class OfflineStorageService {
     });
   }
 
+  // CU18 — Mis reservas offline: obtener reservas con información visual completa
+  async getReservasOfflineCompletas(empresaId: number, clienteId: number): Promise<any[]> {
+    const reservas = await this.getReservasOfflinePendientes(empresaId);
+    const result: any[] = [];
+
+    for (const reserva of reservas) {
+      if (reserva.cliente_id !== clienteId) continue;
+
+      const preparacion = await this.getPreparacionActual(empresaId, reserva.sucursal_id);
+      if (!preparacion) continue;
+
+      try {
+        const detalles = await this.getDetallesReserva(reserva.uuid);
+        const detallesConInfo = detalles.map((detalle: any) => {
+          const variante = preparacion.productos?.flatMap((p: any) => p.variantes).find((v: any) => v.id === detalle.producto_variante_id);
+          const producto = variante ? preparacion.productos?.find((p: any) => p.variantes?.some((v: any) => v.id === detalle.producto_variante_id)) : null;
+
+          return {
+            id: parseInt(detalle.uuid.slice(0, 8), 16) % 1000000,
+            producto: producto ? { id: producto.id, nombre: producto.nombre, imagen_principal_url: producto.imagen_principal_url } : null,
+            variante: variante ? { id: variante.id, talla: { id: variante.talla_id, nombre: variante.talla_nombre }, color: { id: variante.color_id, nombre: variante.color_nombre } } : null,
+            cantidad: detalle.cantidad,
+            estado: detalle.estado || 'PENDIENTE',
+          };
+        });
+
+        result.push({
+          id: parseInt(reserva.uuid.slice(0, 8), 16) % 1000000,
+          codigo_reserva: `LOC-${reserva.uuid.slice(0, 8).toUpperCase()}`,
+          sucursal: { id: preparacion.sucursal?.id, nombre: preparacion.sucursal?.nombre, ciudad: { id: preparacion.sucursal?.id_ciudad, nombre: preparacion.sucursal?.ciudad } },
+          estado_general: reserva.estado_general,
+          fecha_reserva: reserva.fecha_reserva,
+          hora_inicio: reserva.hora_inicio,
+          hora_fin: reserva.hora_fin || '01:00',
+          fecha_creacion: reserva.fecha_creacion_local,
+          detalles: detallesConInfo,
+          _origen: 'LOCAL',
+          _estado_sync: reserva.estado_sync,
+        });
+      } catch (error) {
+        console.error(`[CU18 OFFLINE] Error procesando reserva ${reserva.uuid}:`, error);
+        continue;
+      }
+    }
+
+    return result;
+  }
+
+  // CU18 — Obtener detalles de una reserva offline
+  private async getDetallesReserva(reservaUuid: string): Promise<any[]> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offline_reserva_detalles'], 'readonly');
+      const store = transaction.objectStore('offline_reserva_detalles');
+      const index = store.index('reserva_uuid');
+
+      const request = index.getAll(reservaUuid);
+
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Error al obtener detalles: ${request.error?.message}`));
+      };
+    });
+  }
+
   // CU8 — Validaciones locales: obtener datos de CU6 para validar reserva
   async getPreparacionActual(empresaId: number, sucursalId: number): Promise<OfflinePreparacion | null> {
     await this.dbReady;
