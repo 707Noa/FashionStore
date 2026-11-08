@@ -762,10 +762,10 @@ export class OfflineStorageService {
 
       request.onsuccess = () => {
         const registros = request.result || [];
-        const preparacion = registros.find(
-          (p: any) => p?.metadata?.empresa_id === empresaId && p?.metadata?.sucursal_id === sucursalId
+        const registro = registros.find(
+          (p: any) => p?.empresa_id === empresaId && p?.sucursal_id === sucursalId
         );
-        resolve(preparacion || null);
+        resolve(registro?.data || null);
       };
 
       request.onerror = () => {
