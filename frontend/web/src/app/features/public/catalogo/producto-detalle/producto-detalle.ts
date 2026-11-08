@@ -246,13 +246,13 @@ export class ProductoDetalle implements OnInit {
       next: (ciudades) => {
         this.ciudades.set(ciudades);
         this.loadingCiudades.set(false);
-        // Prioridad: la ciudad que traía el returnUrl del login (intención
-        // explícita reciente) -> la última que el Cliente recordaba de una
-        // sesión de navegación anterior (localStorage) -> ninguna. NUNCA la
-        // primera de la lista sin que el Cliente la haya elegido.
+        console.log(`[CU07 CITIES] mode: ONLINE | total: ${ciudades.length} | cities: ${ciudades.map((c) => c.nombre).join(', ')}`);
+        // Prioridad: query param -> localStorage -> Santa Cruz -> primera activa -> null
         const ciudadDeVuelta = ciudades.find((c) => c.id === this.ciudadIdParam);
         const ciudadGuardada = ciudades.find((c) => c.id === this.leerCiudadGuardada());
-        const ciudadInicial = ciudadDeVuelta ?? ciudadGuardada ?? null;
+        const ciudadSantaCruz = ciudades.find((c) => c.nombre === 'Santa Cruz');
+        const ciudadPrimera = ciudades[0] ?? null;
+        const ciudadInicial = ciudadDeVuelta ?? ciudadGuardada ?? ciudadSantaCruz ?? ciudadPrimera ?? null;
         if (ciudadInicial) {
           this.ciudadId.set(ciudadInicial.id);
           this.guardarCiudad(ciudadInicial.id);
@@ -284,10 +284,14 @@ export class ProductoDetalle implements OnInit {
 
       this.ciudades.set(ciudades);
       this.loadingCiudades.set(false);
+      console.log(`[CU07 CITIES] mode: OFFLINE | total: ${ciudades.length} | cities: ${ciudades.map((c) => c.nombre).join(', ')}`);
 
+      // Prioridad: query param -> localStorage -> Santa Cruz -> primera activa -> null
       const ciudadDeVuelta = ciudades.find((c) => c.id === this.ciudadIdParam);
       const ciudadGuardada = ciudades.find((c) => c.id === this.leerCiudadGuardada());
-      const ciudadInicial = ciudadDeVuelta ?? ciudadGuardada ?? ciudades[0] ?? null;
+      const ciudadSantaCruz = ciudades.find((c) => c.nombre === 'Santa Cruz');
+      const ciudadPrimera = ciudades[0] ?? null;
+      const ciudadInicial = ciudadDeVuelta ?? ciudadGuardada ?? ciudadSantaCruz ?? ciudadPrimera ?? null;
       if (ciudadInicial) {
         this.ciudadId.set(ciudadInicial.id);
         this.guardarCiudad(ciudadInicial.id);
@@ -362,7 +366,7 @@ export class ProductoDetalle implements OnInit {
     this.disponibilidadService.consultar(productoId, tallaId, colorId, ciudadId).subscribe({
       next: (respuesta) => {
         if (respuesta) {
-          console.log(`[CU07 AVAILABILITY] producto: ${productoId} | online: true | servicio: HTTP`);
+          console.log(`[CU07 BRANCHES] cityId: ${ciudadId} | branches: ${respuesta.disponibilidad.length}`);
           this.disponibilidad.set(respuesta.disponibilidad);
           this.loadingDisponibilidad.set(false);
           this.restaurarSucursalSiCorresponde();
@@ -394,10 +398,6 @@ export class ProductoDetalle implements OnInit {
       this.loadingDisponibilidad.set(true);
       this.errorDisponibilidad.set(null);
 
-      console.log(
-        `[CU07 AVAILABILITY] producto: ${productoId} | online: false | servicio: LOCAL`,
-      );
-
       const disponibilidadCompleta = await this.offlineStorage.getDisponibilidadProductoOffline(
         usuario.empresa_id,
         productoId,
@@ -410,11 +410,21 @@ export class ProductoDetalle implements OnInit {
         return;
       }
 
-      console.log(
-        `[CU07 AVAILABILITY LOCAL] productos: ${disponibilidadCompleta.length} | variantes: ${disponibilidadCompleta.reduce((sum, s) => sum + s.variantes.length, 0)} | sucursales: ${disponibilidadCompleta.length}`,
+      // Filtrar por ciudad
+      const disponibilidadFiltrada = disponibilidadCompleta.filter(
+        (item) => item.ciudad_id === ciudadId
       );
 
-      this.disponibilidad.set(disponibilidadCompleta);
+      console.log(`[CU07 BRANCHES] cityId: ${ciudadId} | branches: ${disponibilidadFiltrada.length}`);
+
+      if (disponibilidadFiltrada.length === 0) {
+        this.disponibilidad.set([]);
+        this.loadingDisponibilidad.set(false);
+        this.errorDisponibilidad.set('No hay sucursales disponibles en esta ciudad.');
+        return;
+      }
+
+      this.disponibilidad.set(disponibilidadFiltrada);
       this.loadingDisponibilidad.set(false);
       this.restaurarSucursalSiCorresponde();
     } catch (error) {

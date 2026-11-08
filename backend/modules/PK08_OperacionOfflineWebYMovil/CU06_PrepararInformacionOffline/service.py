@@ -15,6 +15,7 @@ from modules.P6_InnovacionYAnalisis.CU32_GestionarPromociones.precio_efectivo im
 from .repository import PreparacionOfflineRepository
 from .schemas import (
     CategoriaOut,
+    CiudadOut,
     ColeccionOut,
     ColorOut,
     ClienteMinimosOut,
@@ -130,7 +131,16 @@ class PreparacionOfflineService:
                     imagen_principal_url=prod.imagen_principal_url,
                 ))
 
-        # 4. Obtener catálogos
+        # 4. Obtener ciudades (todas las ciudades activas del sistema)
+        print("[CU06 CHECKPOINT] Antes de obtener_ciudades()")
+        ciudades = self.repo.obtener_ciudades()
+        print(f"[CU06 CHECKPOINT] Después de obtener_ciudades() - total: {len(ciudades)}")
+        ciudades_out = [CiudadOut(id=c.id, nombre=c.nombre) for c in ciudades]
+        print(f"[CU06 CITIES API] total: {len(ciudades_out)}")
+        for c in ciudades_out:
+            print(f"  - {c.nombre}")
+
+        # 5. Obtener catálogos
         tallas = self.repo.obtener_tallas(empresa_id=empresa_id)
         tallas_out = [TallaOut(id=t.id, nombre=t.nombre) for t in tallas]
 
@@ -153,14 +163,14 @@ class PreparacionOfflineService:
             for col in colecciones
         ]
 
-        # 5. Obtener clientes mínimos
+        # 6. Obtener clientes mínimos
         clientes = self.repo.obtener_clientes_minimos(empresa_id)
         clientes_out = [
             ClienteMinimosOut(id=c.id, nombre=c.nombre, correo=c.correo)
             for c in clientes
         ]
 
-        # 6. Metadata de preparación
+        # 8. Metadata de preparación
         metadata = MetadataPreparacionOut(
             fecha_preparacion=datetime.now(timezone.utc),
             version=1,
@@ -169,14 +179,16 @@ class PreparacionOfflineService:
             sucursal_id=sucursal_id,
         )
 
-        # 7. Respuesta
+        # 9. Respuesta
         return PreparacionOfflineOut(
             sucursal=SucursalOut(
                 id=sucursal.id,
                 nombre=sucursal.nombre,
+                id_ciudad=sucursal.ciudad_id if sucursal.ciudad_id else None,
                 ciudad=sucursal.ciudad.nombre if sucursal.ciudad else None,
                 es_activa=sucursal.is_active,
             ),
+            ciudades=ciudades_out,
             productos=productos_out,
             tallas=tallas_out,
             colores=colores_out,

@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from modules.P1_SucursalesYCatalogos.Models.categoria import Categoria
+from modules.P1_SucursalesYCatalogos.Models.ciudad import Ciudad
 from modules.P1_SucursalesYCatalogos.Models.color import Color
 from modules.P1_SucursalesYCatalogos.Models.coleccion import Coleccion
 from modules.P1_SucursalesYCatalogos.Models.producto import Producto
@@ -102,4 +103,11 @@ class PreparacionOfflineRepository:
             Coleccion.empresa_id == empresa_id,
             Coleccion.is_active.is_(True)
         ).order_by(Coleccion.nombre)
+        return list(self.db.execute(stmt).scalars().all())
+
+    def obtener_ciudades(self) -> list[Ciudad]:
+        """Obtiene ciudades activas (no filtradas por empresa — son públicas)."""
+        stmt = select(Ciudad).where(
+            Ciudad.is_active.is_(True)
+        ).order_by(Ciudad.nombre)
         return list(self.db.execute(stmt).scalars().all())

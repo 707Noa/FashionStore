@@ -14,9 +14,14 @@ export interface OfflinePreparacion {
   sucursal: {
     id: number;
     nombre: string;
+    id_ciudad: number | null;
     ciudad: string | null;
     es_activa: boolean;
   };
+  ciudades: Array<{
+    id: number;
+    nombre: string;
+  }>;
   productos: Array<{
     id: number;
     nombre: string;
@@ -105,6 +110,12 @@ export class OfflineStorageService {
             unique: true,
           });
           console.log('Object Store offline_preparacion creado');
+        }
+
+        if (!db.objectStoreNames.contains('offline_ciudades')) {
+          const ciudadesStore = db.createObjectStore('offline_ciudades', { keyPath: 'id' });
+          ciudadesStore.createIndex('empresa_id', 'empresa_id');
+          console.log('Object Store offline_ciudades creado');
         }
       };
 
@@ -375,7 +386,8 @@ export class OfflineStorageService {
           continue;
         }
 
-        const ciudadId = hash(prep.sucursal.ciudad || 'sin-ciudad');
+        // Usar id_ciudad del paquete offline (ahora incluido en el schema)
+        const ciudadId = prep.sucursal.id_ciudad || hash(prep.sucursal.ciudad || 'sin-ciudad');
 
         // Si ya existe esta sucursal, combinar variantes
         if (disponibilidadMap.has(prep.sucursal.id)) {
@@ -422,17 +434,18 @@ export class OfflineStorageService {
 
   async getCiudadesOffline(empresaId: number): Promise<Array<{ id: number; nombre: string }>> {
     try {
+      // Leer ciudades desde la primera preparación
       const preparaciones = await this.getAllPreparaciones(empresaId);
-      const ciudadesMap = new Map<number, string>();
-
-      for (const prep of preparaciones) {
-        const ciudadId = hash(prep.sucursal.ciudad || 'sin-ciudad');
-        if (!ciudadesMap.has(ciudadId)) {
-          ciudadesMap.set(ciudadId, prep.sucursal.ciudad || 'Sin ciudad');
-        }
+      if (preparaciones.length === 0) {
+        return [];
       }
 
-      return Array.from(ciudadesMap, ([id, nombre]) => ({ id, nombre }));
+      const ciudades = preparaciones[0].ciudades || [];
+      console.log(`[CU07 CITIES OFFLINE] total: ${ciudades.length}`);
+      for (const c of ciudades) {
+        console.log(`  - ${c.nombre}`);
+      }
+      return ciudades;
     } catch (error) {
       console.error('Error al obtener ciudades offline:', error);
       return [];
@@ -509,5 +522,77 @@ export class OfflineStorageService {
       console.error('Error al obtener colecciones offline:', error);
       return [];
     }
+  }
+
+  async saveCiudades(ciudades: Array<{ id: number; nombre: string }>, empresaId: number): Promise<void> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    const transaction = db.transaction(['offline_ciudades'], 'readwrite');
+    const store = transaction.objectStore('offline_ciudades');
+
+    return new Promise((resolve, reject) => {
+      // Guardar nuevas ciudades
+      for (const ciudad of ciudades) {
+        const dataToStore = {
+          id: ciudad.id,
+          empresa_id: empresaId,
+          nombre: ciudad.nombre,
+          timestamp: new Date().toISOString(),
+        };
+        store.put(dataToStore);
+      }
+
+      transaction.oncomplete = () => {
+        console.log(`[CU07 CITIES SAVE] Guardadas: ${ciudades.length}`);
+        console.log(`[CU07 CITIES SAVE] ${ciudades.map((c) => c.nombre).join(', ')}`);
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
+      };
+    });
+  }
+
+  async getCiudadesGuardadas(empresaId: number): Promise<Array<{ id: number; nombre: string }>> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    const transaction = db.transaction(['offline_ciudades'], 'readonly');
+    const store = transaction.objectStore('offline_ciudades');
+    const index = store.index('empresa_id');
+
+    return new Promise((resolve, reject) => {
+      const request = index.getAll(IDBKeyRange.only(empresaId));
+
+      request.onsuccess = () => {
+        const ciudades = (request.result || []).map((item) => ({
+          id: item.id,
+          nombre: item.nombre,
+        }));
+        console.log(`[CU07 CITIES OFFLINE] total: ${ciudades.length}`);
+        for (const c of ciudades) {
+          console.log(`  - ${c.nombre}`);
+        }
+        resolve(ciudades);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Error al obtener ciudades: ${request.error?.message}`));
+      };
+
+      transaction.onerror = () => {
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
+      };
+    });
   }
 }

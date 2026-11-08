@@ -45,6 +45,28 @@ export class OfflinePreparacionService {
         return false;
       }
 
+      // Diagnóstico: qué está en el paquete
+      console.log('[CU07 RESPONSE RAW]');
+      console.log(`  ciudades exists: ${('ciudades' in preparacion)}`);
+      console.log(`  ciudades value: ${JSON.stringify((preparacion as any).ciudades)}`);
+      console.log(`  ciudades type: ${typeof (preparacion as any).ciudades}`);
+      console.log(`  is array: ${Array.isArray((preparacion as any).ciudades)}`);
+
+      // Guardar ciudades si están disponibles en el paquete
+      if (preparacion.ciudades && Array.isArray(preparacion.ciudades)) {
+        console.log(`[CU07 CITIES RECEIVED] total: ${preparacion.ciudades.length}`);
+        for (const c of preparacion.ciudades) {
+          console.log(`  - ${c.nombre}`);
+        }
+        await this.offlineStorage.saveCiudades(preparacion.ciudades, empresaId);
+      } else {
+        console.warn('[CU07 CITIES RECEIVED] NO CIUDADES EN EL PAQUETE');
+      }
+
+      // Log de sucursal guardada
+      console.log(`[CU07 BRANCHES] Guardadas: 1`);
+      console.log(`[CU07 BRANCHES] ${preparacion.sucursal.nombre} → ${preparacion.sucursal.ciudad || 'Sin ciudad'}`);
+
       // Guardar en IndexedDB
       await this.offlineStorage.savePreparacion(preparacion, empresaId);
 

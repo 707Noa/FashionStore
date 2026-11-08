@@ -31,7 +31,7 @@ export class DisponibilidadService {
     ciudadId?: number,
   ): Observable<ProductoDisponibilidad> {
     if (!this.connectivity.isOnline()) {
-      return from(this.consultarOffline(productoId));
+      return from(this.consultarOffline(productoId, ciudadId));
     }
 
     let params = new HttpParams().set('producto_id', productoId);
@@ -59,7 +59,7 @@ export class DisponibilidadService {
           console.warn(
             `[CU07 AVAILABILITY FALLBACK] Backend error ${error.status || 'UNKNOWN'} — usando datos offline`,
           );
-          return from(this.consultarOffline(productoId)).pipe(
+          return from(this.consultarOffline(productoId, undefined)).pipe(
             catchError(() => {
               // Si offline también falla, devolver error original
               return of(undefined as any);
@@ -73,7 +73,7 @@ export class DisponibilidadService {
     );
   }
 
-  private async consultarOffline(productoId: number): Promise<ProductoDisponibilidad> {
+  private async consultarOffline(productoId: number, ciudadId?: number): Promise<ProductoDisponibilidad> {
     const usuario = this.authService.usuario();
     if (!usuario?.empresa_id) {
       throw new Error('No hay información disponible para consultar disponibilidad sin conexión.');
@@ -92,50 +92,57 @@ export class DisponibilidadService {
 
     preparaciones.forEach((prep) => {
       const producto = prep.productos.find((p) => p.id === productoId);
-      if (producto) {
-        // Si esta sucursal ya existe en el map, combinar variantes
-        if (disponibilidadMap.has(prep.sucursal.id)) {
-          const existing = disponibilidadMap.get(prep.sucursal.id)!;
-          const nuevasVariantes: VarianteDisponible[] = producto.variantes.map((v) => ({
-            producto_variante_id: v.id,
-            talla_id: v.talla_id,
-            talla: v.talla_nombre,
-            color_id: v.color_id,
-            color: v.color_nombre,
-            cantidad: v.stock_disponible,
-          }));
+      if (!producto) {
+        return;
+      }
 
-          // Combinar variantes (evitar duplicadas por id)
-          const variantesMap = new Map<number, VarianteDisponible>();
-          existing.variantes.forEach((v) => variantesMap.set(v.producto_variante_id, v));
-          nuevasVariantes.forEach((v) => variantesMap.set(v.producto_variante_id, v));
-          existing.variantes = Array.from(variantesMap.values());
-        } else {
-          // Primera vez que vemos esta sucursal
-          const variantes: VarianteDisponible[] = producto.variantes.map((v) => ({
-            producto_variante_id: v.id,
-            talla_id: v.talla_id,
-            talla: v.talla_nombre,
-            color_id: v.color_id,
-            color: v.color_nombre,
-            cantidad: v.stock_disponible,
-          }));
+      // Filtrar por ciudad si se especifica
+      if (ciudadId !== undefined && prep.sucursal.id_ciudad !== ciudadId) {
+        return;
+      }
 
-          disponibilidadMap.set(prep.sucursal.id, {
-            sucursal_id: prep.sucursal.id,
-            sucursal: prep.sucursal.nombre,
-            ciudad_id: 0,
-            ciudad: prep.sucursal.ciudad || '',
-            variantes,
-          });
-        }
+      // Si esta sucursal ya existe en el map, combinar variantes
+      if (disponibilidadMap.has(prep.sucursal.id)) {
+        const existing = disponibilidadMap.get(prep.sucursal.id)!;
+        const nuevasVariantes: VarianteDisponible[] = producto.variantes.map((v) => ({
+          producto_variante_id: v.id,
+          talla_id: v.talla_id,
+          talla: v.talla_nombre,
+          color_id: v.color_id,
+          color: v.color_nombre,
+          cantidad: v.stock_disponible,
+        }));
+
+        // Combinar variantes (evitar duplicadas por id)
+        const variantesMap = new Map<number, VarianteDisponible>();
+        existing.variantes.forEach((v) => variantesMap.set(v.producto_variante_id, v));
+        nuevasVariantes.forEach((v) => variantesMap.set(v.producto_variante_id, v));
+        existing.variantes = Array.from(variantesMap.values());
+      } else {
+        // Primera vez que vemos esta sucursal
+        const variantes: VarianteDisponible[] = producto.variantes.map((v) => ({
+          producto_variante_id: v.id,
+          talla_id: v.talla_id,
+          talla: v.talla_nombre,
+          color_id: v.color_id,
+          color: v.color_nombre,
+          cantidad: v.stock_disponible,
+        }));
+
+        disponibilidadMap.set(prep.sucursal.id, {
+          sucursal_id: prep.sucursal.id,
+          sucursal: prep.sucursal.nombre,
+          ciudad_id: prep.sucursal.id_ciudad || 0,
+          ciudad: prep.sucursal.ciudad || '',
+          variantes,
+        });
       }
     });
 
     const disponibilidad = Array.from(disponibilidadMap.values());
 
     if (disponibilidad.length === 0) {
-      throw new Error(`Producto ${productoId} no encontrado en información local.`);
+      throw new Error(`Producto ${productoId} no encontrado en información local para la ciudad seleccionada.`);
     }
 
     return {

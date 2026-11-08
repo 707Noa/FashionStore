@@ -49,6 +49,15 @@ class TemporadaOut(BaseModel):
         from_attributes = True
 
 
+class CiudadOut(BaseModel):
+    """Ciudad para almacenamiento local."""
+    id: int
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+
 class ColeccionOut(BaseModel):
     """Colección para almacenamiento local."""
     id: int
@@ -103,6 +112,7 @@ class SucursalOut(BaseModel):
     """Sucursal para contexto offline."""
     id: int
     nombre: str
+    id_ciudad: int | None
     ciudad: str | None
     es_activa: bool
 
@@ -132,6 +142,7 @@ class MetadataPreparacionOut(BaseModel):
 class PreparacionOfflineOut(BaseModel):
     """Respuesta completa de preparación offline."""
     sucursal: SucursalOut
+    ciudades: list[CiudadOut]
     productos: list[ProductoOut]
     tallas: list[TallaOut]
     colores: list[ColorOut]
