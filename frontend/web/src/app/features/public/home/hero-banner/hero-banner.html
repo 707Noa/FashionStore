@@ -7,10 +7,9 @@
         [queryParams]="{ coleccion_id: coleccion.id }"
         class="hero__cta"
       >Explorar colección</a>
+      @if (coleccion.imagen_destacada_url && connectivity.isOnline()) {
+        <img [src]="resolveMediaUrl(coleccion.imagen_destacada_url)" alt="" class="hero__image" />
+      }
     }
   </div>
-
-  @if (coleccionDestacada()?.imagen_destacada_url; as imagenUrl) {
-    <img [src]="resolveMediaUrl(imagenUrl)" alt="" class="hero__image" />
-  }
 </div>
