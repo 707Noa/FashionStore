@@ -814,7 +814,8 @@ export class OfflineStorageService {
   }
 
   // CU18 — Obtener detalles de una reserva offline
-  private async getDetallesReserva(reservaUuid: string): Promise<any[]> {
+  // CU10 — Público para CU10 (consulta de detalles)
+  async getDetallesReserva(reservaUuid: string): Promise<any[]> {
     await this.dbReady;
     const db = this.db;
 
@@ -1112,8 +1113,8 @@ export class OfflineStorageService {
     }
   }
 
-  // CU9 — Obtener detalles de una venta
-  private async obtenerDetallesVenta(ventaUuid: string): Promise<any[]> {
+  // CU9/CU10 — Obtener detalles de una venta (public para que CU10 pueda consultarla)
+  async obtenerDetallesVenta(ventaUuid: string): Promise<any[]> {
     await this.dbReady;
     const db = this.db;
 

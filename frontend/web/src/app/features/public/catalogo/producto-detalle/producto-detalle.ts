@@ -226,9 +226,27 @@ export class ProductoDetalle implements OnInit {
         this.loading.set(false);
         this.loadDisponibilidad();
       },
-      error: () => {
+      error: (error: any) => {
         this.loading.set(false);
-        this.notFound.set(true);
+        // Diferenciar el tipo de error
+        if (error.status === 404) {
+          // Producto realmente no existe en la base de datos
+          console.log(`[DETALLE] Producto ${id} no encontrado en el servidor`);
+          this.notFound.set(true);
+        } else if (error.status === 401 || error.status === 403) {
+          // Problema de autenticación o autorización — no usar datos locales
+          console.error(`[DETALLE] Error de acceso (${error.status}) al producto ${id}`);
+          this.notFound.set(true);
+        } else if (error.status === 500) {
+          // Error del servidor — intentar desde IndexedDB si disponible
+          console.error(`[DETALLE] Error del servidor (500) al obtener producto ${id}`, error);
+          this.notFound.set(true);
+        } else {
+          // Fallo de transporte, timeout, etc. — el servicio ya intentó IndexedDB
+          // Si llegamos aquí es que tampoco está localmente disponible
+          console.error(`[DETALLE] Fallo de transporte/timeout al obtener producto ${id}`, error);
+          this.notFound.set(true);
+        }
       },
     });
   }

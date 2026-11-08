@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ConnectivityService } from '../../core/services/connectivity.service';
-import { OfflineStorageService } from '../../core/services/offline-storage.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ConsultaOperacionesLocalesService } from '../operacion-offline/cu10-consultar-datos-operaciones-locales/consulta-operaciones-locales.service';
 import { FiltroHistorial, VentaHistorialOut } from './historial-compras.model';
 
 /** Consume CU27 -- Consultar historial de compras. Requiere un CLIENTE o un
@@ -17,8 +17,8 @@ import { FiltroHistorial, VentaHistorialOut } from './historial-compras.model';
 export class HistorialComprasService {
   private readonly http = inject(HttpClient);
   private readonly connectivity = inject(ConnectivityService);
-  private readonly offlineStorage = inject(OfflineStorageService);
   private readonly auth = inject(AuthService);
+  private readonly cu10 = inject(ConsultaOperacionesLocalesService);
   private readonly baseUrl = `${environment.apiUrl}/historial-compras`;
 
   private construirParams(filtro: FiltroHistorial): HttpParams {
@@ -53,37 +53,38 @@ export class HistorialComprasService {
     });
   }
 
-  // CU9 — Obtener ventas offline desde IndexedDB
+  // CU10 — Obtener ventas offline desde IndexedDB (delegada a CU10)
   private async listarSucursalOffline(filtro: FiltroHistorial): Promise<VentaHistorialOut[]> {
     try {
       const usuario = this.auth.usuario();
       const empresaId = usuario?.empresa_id || 1;
 
-      const ventas = await this.offlineStorage.obtenerVentasOfflinePendientes(empresaId);
+      // Consultar operaciones locales a través de CU10
+      const ventasOffline = await this.cu10.consultarVentasOffline(empresaId);
 
-      if (!ventas || ventas.length === 0) {
-        console.log('[CU9 HISTORIAL] No hay ventas offline para empresa:', empresaId);
+      if (!ventasOffline || ventasOffline.length === 0) {
+        console.log('[CU10 HISTORIAL] No hay ventas offline para empresa:', empresaId);
         return [];
       }
 
-      // Mapear estructura offline a VentaHistorialOut
-      const ventasHistorial: VentaHistorialOut[] = ventas.map((v: any) => ({
-        venta_id: parseInt(v.uuid.slice(0, 8), 16) % 1000000,
-        codigo_venta: `LOC-${v.uuid.slice(0, 8).toUpperCase()}`,
-        fecha: v.fecha_creacion,
-        sucursal: { id: v.sucursal_id, nombre: 'Sucursal Local', ciudad: 'Local' },
-        cliente_nombre: 'Cliente Local',
-        tipo: 'PRESENCIAL',
-        metodo_pago: v.pago?.metodo_pago || 'EFECTIVO',
+      // Mapear VentaOfflineCompleta a VentaHistorialOut
+      const ventasHistorial: VentaHistorialOut[] = ventasOffline.map((v: any) => ({
+        venta_id: v.venta_id,
+        codigo_venta: v.codigo_venta,
+        fecha: v.fecha,
+        sucursal: v.sucursal,
+        cliente_nombre: v.cliente_nombre,
+        tipo: v.tipo,
+        metodo_pago: v.metodo_pago,
         total: v.total,
-        tiene_postventa: false,
-        leyenda_postventa: null,
+        tiene_postventa: v.tiene_postventa,
+        leyenda_postventa: v.leyenda_postventa,
       }));
 
-      console.log('[CU9 HISTORIAL] Ventas offline cargadas:', ventasHistorial.length);
+      console.log('[CU10 HISTORIAL] Ventas offline consultadas a través de CU10:', ventasHistorial.length);
       return ventasHistorial;
     } catch (error) {
-      console.error('[CU9 HISTORIAL] Error al cargar ventas offline:', error);
+      console.error('[CU10 HISTORIAL] Error al consultar ventas offline:', error);
       return [];
     }
   }

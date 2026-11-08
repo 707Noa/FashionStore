@@ -63,7 +63,7 @@ export class CatalogoService {
   }
 
   listProductos(query?: CatalogoProductosQuery): Observable<ProductoPublico[]> {
-    if (!navigator.onLine) {
+    if (!this.connectivity.isOnline()) {
       return from(this.getProductosOffline(query));
     }
 
@@ -90,10 +90,21 @@ export class CatalogoService {
   }
 
   getProducto(id: number): Observable<ProductoPublico> {
-    if (!navigator.onLine) {
+    if (!this.connectivity.isOnline()) {
       return from(this.getProductoOffline(id));
     }
-    return this.http.get<ProductoPublico>(`${this.baseUrl}/productos/${id}`);
+    // Intentar obtener del servidor; si falla, fallback a IndexedDB
+    return this.http.get<ProductoPublico>(`${this.baseUrl}/productos/${id}`).pipe(
+      catchError((error) => {
+        // Si es 404, no es un error de transporte — producto realmente no existe
+        if (error.status === 404) {
+          return throwError(() => error);
+        }
+        // Otros errores (500, timeout, ERR_FAILED, etc.) → intentar IndexedDB
+        console.log(`[CATALOGO] Fallo al obtener producto ${id} del servidor, intentando IndexedDB...`, error.status);
+        return from(this.getProductoOffline(id));
+      })
+    );
   }
 
   private async getTallasOffline(): Promise<TallaPublica[]> {
