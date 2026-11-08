@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { resolveMediaUrl } from '../../../core/utils/resolve-media-url';
 import { Icon } from '../../../core/ui/icon/icon';
+import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/ui/toast/toast.service';
 import { CarritoItemOut, CarritoOut } from '../carrito.model';
 import { CarritoService } from '../carrito.service';
@@ -42,6 +43,7 @@ import { CarritoService } from '../carrito.service';
   styleUrl: './mi-carrito.scss',
 })
 export class MiCarrito implements OnInit {
+  private readonly auth = inject(AuthService);
   private readonly service = inject(CarritoService);
   private readonly toast = inject(ToastService);
 
@@ -75,6 +77,10 @@ export class MiCarrito implements OnInit {
   cargar(): void {
     this.cargando.set(true);
     this.errorMessage.set(null);
+    this._cargarOnline();
+  }
+
+  private _cargarOnline(): void {
     this.service.consultar().subscribe({
       next: (carrito) => {
         this.carrito.set(carrito);
@@ -92,6 +98,10 @@ export class MiCarrito implements OnInit {
       return;
     }
     this.procesandoItemId.set(item.item_id);
+    this._toggleSeleccionOnline(item);
+  }
+
+  private _toggleSeleccionOnline(item: CarritoItemOut): void {
     this.service.actualizarSeleccion(item.item_id, { seleccionado: !item.seleccionado }).subscribe({
       next: (carrito) => {
         this.procesandoItemId.set(null);
@@ -109,6 +119,10 @@ export class MiCarrito implements OnInit {
       return;
     }
     this.procesandoItemId.set(item.item_id);
+    this._eliminarOnline(item);
+  }
+
+  private _eliminarOnline(item: CarritoItemOut): void {
     this.service.eliminarItem(item.item_id).subscribe({
       next: (carrito) => {
         this.procesandoItemId.set(null);

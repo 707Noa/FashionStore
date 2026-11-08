@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Icon } from '../../../core/ui/icon/icon';
+import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/ui/toast/toast.service';
 import { resolveMediaUrl } from '../../../core/utils/resolve-media-url';
 import { CiudadPublica } from '../../public/sucursales/sucursal.model';
@@ -50,6 +51,7 @@ type Paso = 'resumen' | 'sucursal' | 'confirmacion';
   styleUrl: './finalizar-compra.scss',
 })
 export class FinalizarCompra implements OnInit {
+  private readonly auth = inject(AuthService);
   private readonly service = inject(CompraDigitalService);
   private readonly sucursalesPublicas = inject(SucursalPublicaService);
   private readonly toast = inject(ToastService);
@@ -86,6 +88,10 @@ export class FinalizarCompra implements OnInit {
   cargarResumen(): void {
     this.cargando.set(true);
     this.errorMessage.set(null);
+    this._cargarResumenOnline();
+  }
+
+  private _cargarResumenOnline(): void {
     this.service.obtenerResumen().subscribe({
       next: (resumen) => {
         this.resumen.set(resumen);
@@ -151,6 +157,10 @@ export class FinalizarCompra implements OnInit {
       return;
     }
     this.confirmando.set(true);
+    this._continuarAlPagoOnline(sucursal);
+  }
+
+  private _continuarAlPagoOnline(sucursal: SucursalCompraOut): void {
     this.service.confirmar({ sucursal_id: sucursal.id }).subscribe({
       next: (venta) => {
         this.confirmando.set(false);

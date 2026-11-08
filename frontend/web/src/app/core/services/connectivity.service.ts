@@ -12,6 +12,9 @@ export class ConnectivityService {
   private checkDebounceMs = 1000;
 
   constructor() {
+    // VERSIÓN AUDITADA 2026-11-08 — Si ves este log, el código nuevo está siendo servido
+    console.log(`%c[CONNECTIVITY] VERSIÓN AUDITADA 2026-11-08 — navigator.onLine=${navigator.onLine}`, 'background:red;color:white;font-weight:bold');
+    console.log(`%c[CONNECTIVITY] Usando SOLO navigator.onLine (SIN health check a /health)`, 'background:blue;color:white');
     this.setupListeners();
   }
 
@@ -28,38 +31,12 @@ export class ConnectivityService {
   }
 
   isOnline(): boolean {
-    this.checkConnectivity();
-    return this.isOnlineSubject.value;
-  }
-
-  private checkConnectivity(): void {
-    const now = Date.now();
-    if (now - this.lastCheckTime < this.checkDebounceMs) {
-      return;
+    const online = navigator.onLine;
+    const subjectValue = this.isOnlineSubject.value;
+    console.log(`[CONNECTIVITY AUDIT] navigator.onLine=${online} | subject=${subjectValue} | returning=${online}`);
+    if (online !== subjectValue) {
+      console.log(`[CONNECTIVITY WARNING] Desincronización: navigator.onLine !== BehaviorSubject`);
     }
-    this.lastCheckTime = now;
-
-    const healthUrl = `${environment.apiUrl}/health`;
-    console.log(`🔍 Verificando: ${healthUrl}`);
-
-    fetch(healthUrl, { method: 'GET', cache: 'no-cache' })
-      .then((response) => {
-        console.log(`📊 Respuesta: ${response.status}`);
-        if (response.ok) {
-          if (!this.isOnlineSubject.value) {
-            console.log('✓ Backend accesible — ONLINE');
-            this.isOnlineSubject.next(true);
-          }
-        } else {
-          throw new Error(`HTTP ${response.status}`);
-        }
-      })
-      .catch((error) => {
-        console.log(`❌ Error: ${error.message}`);
-        if (this.isOnlineSubject.value) {
-          console.log('✗ Backend no accesible — OFFLINE');
-          this.isOnlineSubject.next(false);
-        }
-      });
+    return online;
   }
 }

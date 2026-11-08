@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/core/ui/status-badge/status-badge.ts"
+  ],
+  "sourcesContent": [
+    "import { Component, input } from '@angular/core';\r\n\r\n@Component({\r\n  selector: 'app-status-badge',\r\n  template: `\r\n    @if (active()) {\r\n      <span class=\"badge badge--active\">Activa</span>\r\n    } @else {\r\n      <span class=\"badge badge--inactive\">Inactiva</span>\r\n    }\r\n  `,\r\n})\r\nexport class StatusBadge {\r\n  readonly active = input.required<boolean>();\r\n}\r\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;;;;AAMM,IAAA,4BAAA,GAAA,QAAA,CAAA;AAAkC,IAAA,iBAAA,GAAA,QAAA;AAAM,IAAA,0BAAA;;;;;AAExC,IAAA,4BAAA,GAAA,QAAA,CAAA;AAAoC,IAAA,iBAAA,GAAA,UAAA;AAAQ,IAAA,0BAAA;;;AAI5C,IAAO,cAAP,MAAO,aAAW;EACb,SAAS,MAAM;;;;;;;qCADb,cAAW;EAAA;yEAAX,cAAW,WAAA,CAAA,CAAA,kBAAA,CAAA,GAAA,QAAA,EAAA,QAAA,CAAA,GAAA,QAAA,EAAA,GAAA,OAAA,GAAA,MAAA,GAAA,QAAA,CAAA,CAAA,GAAA,SAAA,eAAA,GAAA,CAAA,GAAA,SAAA,iBAAA,CAAA,GAAA,UAAA,SAAA,qBAAA,IAAA,KAAA;AAAA,QAAA,KAAA,GAAA;AAPpB,MAAA,8BAAA,GAAA,oCAAA,GAAA,GAAA,QAAA,CAAA,EAAgB,GAAA,oCAAA,GAAA,GAAA,QAAA,CAAA;;;AAAhB,MAAA,wBAAA,IAAA,OAAA,IAAA,IAAA,CAAA;;;;;sEAOS,aAAW,CAAA;UAVvB;WAAU;MACT,UAAU;MACV,UAAU;;;;;;;KAOX;;;;6EACY,aAAW,EAAA,WAAA,eAAA,UAAA,gDAAA,YAAA,GAAA,CAAA;AAAA,GAAA;",
+  "names": [],
+  "debugId": "b783fb50-f3e1-5776-91c6-f8615c7d87d8"
+}

@@ -9,7 +9,7 @@ from pathlib import Path
 dist_dir = Path(__file__).parent / "dist" / "frontend" / "browser"
 os.chdir(dist_dir)
 
-PORT = 5000
+PORT = 4200
 
 class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):

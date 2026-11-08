@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/sucursales-catalogo/cu10-gestionar-temporadas-colecciones/temporadas-colecciones.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\n.page-heading {\r\n  margin-bottom: 18px;\r\n\r\n  h2 {\r\n    font-size: 17px;\r\n    font-weight: 600;\r\n    color: var(--color-text);\r\n  }\r\n\r\n  p {\r\n    margin-top: 4px;\r\n    font-size: 12.5px;\r\n    color: var(--color-text-secondary);\r\n  }\r\n}\r\n\r\n.tab-content {\r\n  margin-top: 20px;\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAGF,CAAA;AACE,iBAAA;;AAEA,CAHF,aAGE;AACE,aAAA;AACA,eAAA;AACA,SAAA,IAAA;;AAGF,CATF,aASE;AACE,cAAA;AACA,aAAA;AACA,SAAA,IAAA;;AAIJ,CAAA;AACE,cAAA;;",
+  "names": []
+}

@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/features/public/sucursales/sucursal.service.ts"
+  ],
+  "sourcesContent": [
+    "import { HttpClient, HttpParams } from '@angular/common/http';\r\nimport { Injectable, inject } from '@angular/core';\r\nimport { Observable } from 'rxjs';\r\nimport { environment } from '../../../../environments/environment';\r\nimport { CiudadPublica, SucursalPublica } from './sucursal.model';\r\n\r\n/** Consume la consulta pública de sucursales de CU07 -- sin token, apto para Invitado y Cliente. */\r\n@Injectable({ providedIn: 'root' })\r\nexport class SucursalPublicaService {\r\n  private readonly http = inject(HttpClient);\r\n  private readonly baseUrl = `${environment.apiUrl}/sucursales-publicas`;\r\n\r\n  listCiudades(): Observable<CiudadPublica[]> {\r\n    return this.http.get<CiudadPublica[]>(`${this.baseUrl}/ciudades`);\r\n  }\r\n\r\n  listSucursales(ciudadId?: number): Observable<SucursalPublica[]> {\r\n    let params = new HttpParams();\r\n    if (ciudadId) {\r\n      params = params.set('ciudad_id', ciudadId);\r\n    }\r\n    return this.http.get<SucursalPublica[]>(`${this.baseUrl}/sucursales`, { params });\r\n  }\r\n\r\n  getSucursal(id: number): Observable<SucursalPublica> {\r\n    return this.http.get<SucursalPublica>(`${this.baseUrl}/sucursales/${id}`);\r\n  }\r\n}\r\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;;AAQM,IAAO,yBAAP,MAAO,wBAAsB;EAChB,OAAO,OAAO,UAAU;EACxB,UAAU,GAAG,YAAY,MAAM;EAEhD,eAA2C;AACzC,WAAO,KAAK,KAAK,IAAqB,GAAG,KAAK,OAAO,WAAW;EAClE;EAEA,eAAe,UAAiD;AAC9D,QAAI,SAAS,IAAI,WAAU;AAC3B,QAAI,UAAU;AACZ,eAAS,OAAO,IAAI,aAAa,QAAQ;IAC3C;AACA,WAAO,KAAK,KAAK,IAAuB,GAAG,KAAK,OAAO,eAAe,EAAE,OAAM,CAAE;EAClF;EAEA,YAAY,IAAwC;AAClD,WAAO,KAAK,KAAK,IAAqB,GAAG,KAAK,OAAO,eAAe,EAAE,EAAE;EAC1E;;qCAlBW,yBAAsB;EAAA;4EAAtB,yBAAsB,SAAtB,wBAAsB,WAAA,YADT,OAAM,CAAA;;;sEACnB,wBAAsB,CAAA;UADlC;WAAW,EAAE,YAAY,OAAM,CAAE;;;",
+  "names": [],
+  "debugId": "8cb65c0d-d315-5140-8655-acb2d8ed9425"
+}

@@ -92,7 +92,7 @@ export class OfflineStorageService {
 
   private initializeDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, 2);
+      const request = indexedDB.open(this.dbName, 4);
 
       request.onerror = () => {
         const error = new Error('Error al abrir IndexedDB');
@@ -116,6 +116,19 @@ export class OfflineStorageService {
           const ciudadesStore = db.createObjectStore('offline_ciudades', { keyPath: 'id' });
           ciudadesStore.createIndex('empresa_id', 'empresa_id');
           console.log('Object Store offline_ciudades creado');
+        }
+
+        if (!db.objectStoreNames.contains('offline_reservas')) {
+          const reservasStore = db.createObjectStore('offline_reservas', { keyPath: 'uuid' });
+          reservasStore.createIndex('empresa_id', 'empresa_id');
+          reservasStore.createIndex('estado_sync', 'estado_sync');
+          console.log('Object Store offline_reservas creado');
+        }
+
+        if (!db.objectStoreNames.contains('offline_reserva_detalles')) {
+          const detallesStore = db.createObjectStore('offline_reserva_detalles', { keyPath: 'uuid' });
+          detallesStore.createIndex('reserva_uuid', 'reserva_uuid');
+          console.log('Object Store offline_reserva_detalles creado');
         }
       };
 
@@ -364,6 +377,12 @@ export class OfflineStorageService {
     try {
       const preparaciones = await this.getAllPreparaciones(empresaId);
 
+      console.log(`[CU07 BRANCH FILTER] Total preparaciones: ${preparaciones.length}`);
+      for (let i = 0; i < preparaciones.length; i++) {
+        const prep = preparaciones[i];
+        console.log(`[CU07 BRANCH] prep[${i}] sucursal: ${prep.sucursal.nombre} | id: ${prep.sucursal.id} | id_ciudad: ${prep.sucursal.id_ciudad} | ciudad: ${prep.sucursal.ciudad}`);
+      }
+
       // Deduplicar por sucursal_id usando Map
       const disponibilidadMap = new Map<number, {
         sucursal_id: number;
@@ -388,6 +407,7 @@ export class OfflineStorageService {
 
         // Usar id_ciudad del paquete offline (ahora incluido en el schema)
         const ciudadId = prep.sucursal.id_ciudad || hash(prep.sucursal.ciudad || 'sin-ciudad');
+        console.log(`[CU07 BRANCH PROCESS] sucursal: ${prep.sucursal.nombre} | ciudad_id usado: ${ciudadId} | de: id_ciudad=${prep.sucursal.id_ciudad}`);
 
         // Si ya existe esta sucursal, combinar variantes
         if (disponibilidadMap.has(prep.sucursal.id)) {
@@ -595,4 +615,183 @@ export class OfflineStorageService {
       };
     });
   }
+
+  // CU8 — Registrar reserva offline
+  async saveReservaOffline(reserva: {
+    uuid: string;
+    empresa_id: number;
+    cliente_id: number;
+    sucursal_id: number;
+    fecha_reserva: string;
+    hora_inicio: string;
+    estado_general: string;
+    estado_sync: string;
+    fecha_creacion_local: string;
+    detalles: Array<{
+      uuid: string;
+      producto_variante_id: number;
+      cantidad: number;
+      estado: string;
+      estado_sync: string;
+    }>;
+  }, empresaId: number): Promise<void> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    const transaction = db.transaction(['offline_reservas', 'offline_reserva_detalles'], 'readwrite');
+    const reservasStore = transaction.objectStore('offline_reservas');
+    const detallesStore = transaction.objectStore('offline_reserva_detalles');
+
+    const reservaData = {
+      uuid: reserva.uuid,
+      empresa_id: reserva.empresa_id,
+      cliente_id: reserva.cliente_id,
+      sucursal_id: reserva.sucursal_id,
+      fecha_reserva: reserva.fecha_reserva,
+      hora_inicio: reserva.hora_inicio,
+      estado_general: reserva.estado_general,
+      estado_sync: reserva.estado_sync,
+      fecha_creacion_local: reserva.fecha_creacion_local,
+    };
+
+    return new Promise((resolve, reject) => {
+      console.log(`[CU08 OFFLINE] Abriendo transacción para guardar reserva: ${reserva.uuid}`);
+
+      // Patrón atómico: lanzar TODOS los puts directamente sin callbacks anidados
+      // La transacción permanece abierta hasta que completa
+      try {
+        // Put cabecera de reserva
+        const putReserva = reservasStore.put(reservaData);
+        console.log(`[CU08 OFFLINE] put() reserva enviado: ${reserva.uuid}`);
+
+        // Rastrear errores del put individual
+        putReserva.onsuccess = () => {
+          console.log(`[CU08 OFFLINE] put reserva exitoso`);
+        };
+        putReserva.onerror = () => {
+          console.error(`[CU08 OFFLINE] put reserva ERROR: ${putReserva.error?.message}`);
+        };
+
+        // Put todos los detalles DENTRO de la misma transacción
+        for (const detalle of reserva.detalles) {
+          const putDetalle = detallesStore.put({
+            uuid: detalle.uuid,
+            reserva_uuid: reserva.uuid,
+            producto_variante_id: detalle.producto_variante_id,
+            cantidad: detalle.cantidad,
+            estado: detalle.estado,
+            estado_sync: detalle.estado_sync,
+          });
+          console.log(`[CU08 OFFLINE] put() detalle enviado: ${detalle.uuid}`);
+
+          putDetalle.onerror = () => {
+            console.error(`[CU08 OFFLINE] put detalle ERROR: ${putDetalle.error?.message}`);
+          };
+        }
+        console.log(`[CU08 OFFLINE] todos los puts() encolados: ${reserva.detalles.length} detalles`);
+      } catch (error) {
+        console.error(`[CU08 OFFLINE] EXCEPCIÓN al lanzar puts: ${(error as Error).message}`);
+        reject(new Error(`Error lanzando operaciones: ${(error as Error).message}`));
+        return;
+      }
+
+      // La única confirmación definitiva es transaction.oncomplete
+      // Esto se ejecuta cuando TODOS los puts han completado exitosamente
+      transaction.oncomplete = () => {
+        console.log(`[CU08 OFFLINE] ✅ TRANSACCIÓN COMPLETADA: ${reserva.uuid}`);
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        console.error(`[CU08 OFFLINE] ❌ TRANSACTION ERROR: ${transaction.error?.message}`);
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
+      };
+
+      transaction.onabort = () => {
+        console.error(`[CU08 OFFLINE] ❌ TRANSACTION ABORT: ${transaction.error?.message || 'unknown cause'}`);
+        reject(new Error(`Transaction aborted: ${transaction.error?.message || 'unknown cause'}`));
+      };
+    });
+  }
+
+  async getReservasOfflinePendientes(empresaId: number): Promise<any[]> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offline_reservas'], 'readonly');
+      const store = transaction.objectStore('offline_reservas');
+      const index = store.index('empresa_id');
+
+      const request = index.getAll(empresaId);
+
+      request.onsuccess = () => {
+        const reservas = request.result.filter((r: any) => r.estado_sync === 'PENDIENTE_SYNC');
+        console.log(`[CU08 RESERVAS PENDIENTES] total: ${reservas.length}`);
+        resolve(reservas);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Error al obtener reservas: ${request.error?.message}`));
+      };
+    });
+  }
+
+  // CU8 — Validaciones locales: obtener datos de CU6 para validar reserva
+  async getPreparacionActual(empresaId: number, sucursalId: number): Promise<OfflinePreparacion | null> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offline_preparacion'], 'readonly');
+      const store = transaction.objectStore('offline_preparacion');
+
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const registros = request.result || [];
+        const preparacion = registros.find(
+          (p: any) => p?.metadata?.empresa_id === empresaId && p?.metadata?.sucursal_id === sucursalId
+        );
+        resolve(preparacion || null);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Error al obtener preparación: ${request.error?.message}`));
+      };
+    });
+  }
+
+  // CU8 — Buscar variante específica en datos locales
+  getVariantePorId(preparacion: OfflinePreparacion, varianteId: number): any | null {
+    for (const producto of preparacion.productos) {
+      const variante = producto.variantes.find((v) => v.id === varianteId);
+      if (variante) {
+        return {
+          ...variante,
+          producto_id: producto.id,
+          producto_nombre: producto.nombre,
+        };
+      }
+    }
+    return null;
+  }
+
+  // CU8 — Validar sucursal pertenece a empresa actual
+  validarSucursalPertenece(preparacion: OfflinePreparacion, sucursalId: number, empresaId: number): boolean {
+    return preparacion.metadata.empresa_id === empresaId && preparacion.sucursal.id === sucursalId;
+  }
+
 }
