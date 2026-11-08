@@ -1,11 +1,15 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Icon } from '../../../../core/ui/icon/icon';
+import { ConnectivityService } from '../../../../core/services/connectivity.service';
+import { OfflineStorageService } from '../../../../core/services/offline-storage.service';
 import { ToastService } from '../../../../core/ui/toast/toast.service';
 import { resolveMediaUrl } from '../../../../core/utils/resolve-media-url';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ComprobanteService, descargarBlob } from '../../../comprobantes/comprobante.service';
 import {
   ConfirmarPagoPayload,
+  ConfirmarPagoEfectivoPayload,
   MetodoPago,
   PagoConfirmadoOut,
   TipoTarjeta,
@@ -53,6 +57,9 @@ export class ProcesarPago {
   private readonly toast = inject(ToastService);
   private readonly comprobanteService = inject(ComprobanteService);
   private readonly router = inject(Router);
+  private readonly connectivity = inject(ConnectivityService);
+  private readonly offlineStorage = inject(OfflineStorageService);
+  private readonly auth = inject(AuthService);
 
   readonly venta = input.required<VentaPresencialOut>();
   readonly cerrar = output<void>();
@@ -91,11 +98,19 @@ export class ProcesarPago {
     return recibido >= total ? recibido - total : 0;
   });
 
+  protected readonly estaOffline = computed(() => !this.connectivity.isOnline());
+
   protected readonly puedeConfirmar = computed(() => {
     if (this.confirmando()) {
       return false;
     }
     const metodo = this.metodoSeleccionado();
+
+    // CU9 — Offline: solo EFECTIVO
+    if (this.estaOffline() && metodo !== 'EFECTIVO') {
+      return false;
+    }
+
     if (metodo === 'EFECTIVO') {
       return this.montoRecibidoNumero() >= this.venta().total;
     }
@@ -127,6 +142,12 @@ export class ProcesarPago {
       return;
     }
 
+    // CU9 — Offline: rechazar QR/TARJETA
+    if (this.estaOffline() && metodo !== 'EFECTIVO') {
+      this.toast.error('Sin conexión a Internet, solo se permiten pagos en efectivo.');
+      return;
+    }
+
     let payload: ConfirmarPagoPayload;
     if (metodo === 'EFECTIVO') {
       payload = { metodo_pago: 'EFECTIVO', monto_recibido: this.montoRecibidoNumero() };
@@ -143,6 +164,17 @@ export class ProcesarPago {
     }
 
     this.confirmando.set(true);
+
+    // CU9 — Bifurcación: offline con EFECTIVO → guardar localmente
+    if (this.estaOffline() && metodo === 'EFECTIVO') {
+      this.confirmarPagoOffline(payload as any).catch((err) => {
+        this.confirmando.set(false);
+        this.toast.error('No se pudo guardar la venta offline: ' + (err?.message || 'error desconocido'));
+      });
+      return;
+    }
+
+    // Online o métodos online: proceder con HTTP
     this.service.confirmarPago(this.venta().id, payload).subscribe({
       next: (pago) => {
         this.confirmando.set(false);
@@ -156,6 +188,61 @@ export class ProcesarPago {
         this.toast.error(detalle ?? 'No se pudo registrar el pago. Inténtalo nuevamente.');
       },
     });
+  }
+
+  // CU9 — Guardar venta offline en transacción atómica
+  private async confirmarPagoOffline(payload: ConfirmarPagoEfectivoPayload): Promise<void> {
+    const venta = this.venta();
+    const usuario = this.auth.usuario();
+
+    if (!usuario) {
+      throw new Error('No hay sesión activa');
+    }
+
+    const empresaId = usuario.empresa_id || 1;
+    const preparaciones = await this.offlineStorage.getAllPreparaciones(empresaId);
+    const sucursalId = preparaciones?.[0]?.metadata?.sucursal_id || 1;
+
+    const ventaUuid = crypto.randomUUID();
+    const detalles = venta.detalles.map((d: any) => ({
+      uuid: crypto.randomUUID(),
+      producto_variante_id: d.variante?.id || 0,
+      cantidad: d.cantidad,
+      precio_unitario: d.precio_unitario,
+      subtotal: d.subtotal,
+    }));
+
+    await this.offlineStorage.guardarVentaOffline({
+      uuid: ventaUuid,
+      empresa_id: empresaId,
+      cajero_id: usuario.id || 0,
+      sucursal_id: sucursalId,
+      fecha_creacion: new Date().toISOString(),
+      total: venta.total,
+      estado: 'PENDIENTE_PAGO',
+      estado_sync: 'PENDIENTE_SYNC',
+      tipo: 'PRESENCIAL',
+      origen: 'DIRECTA',
+      detalles,
+      pago: {
+        monto_total: venta.total,
+        monto_recibido: payload.monto_recibido,
+        cambio: payload.monto_recibido - venta.total,
+        fecha_cobro: new Date().toISOString(),
+      },
+    });
+
+    this.confirmando.set(false);
+    this.pagoConfirmado.set({
+      codigo_venta: `LOC-${ventaUuid.slice(0, 8).toUpperCase()}`,
+      total: venta.total,
+      metodo_pago: 'EFECTIVO',
+      monto_recibido: payload.monto_recibido,
+      cambio: payload.monto_recibido - venta.total,
+    });
+    this.paso.set('confirmado');
+    this.pagoRegistrado.emit();
+    this.toast.success('Venta guardada en offline. Pendiente de sincronización.');
   }
 
   onCerrar(): void {

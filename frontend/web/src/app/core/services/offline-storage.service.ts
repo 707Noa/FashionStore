@@ -92,7 +92,7 @@ export class OfflineStorageService {
 
   private initializeDB(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, 4);
+      const request = indexedDB.open(this.dbName, 5);
 
       request.onerror = () => {
         const error = new Error('Error al abrir IndexedDB');
@@ -129,6 +129,26 @@ export class OfflineStorageService {
           const detallesStore = db.createObjectStore('offline_reserva_detalles', { keyPath: 'uuid' });
           detallesStore.createIndex('reserva_uuid', 'reserva_uuid');
           console.log('Object Store offline_reserva_detalles creado');
+        }
+
+        // CU9 — Venta presencial offline
+        if (!db.objectStoreNames.contains('offline_ventas')) {
+          const ventasStore = db.createObjectStore('offline_ventas', { keyPath: 'uuid' });
+          ventasStore.createIndex('empresa_id', 'empresa_id');
+          ventasStore.createIndex('estado_sync', 'estado_sync');
+          console.log('Object Store offline_ventas creado');
+        }
+
+        if (!db.objectStoreNames.contains('offline_venta_detalles')) {
+          const detallesVentaStore = db.createObjectStore('offline_venta_detalles', { keyPath: 'uuid' });
+          detallesVentaStore.createIndex('venta_uuid', 'venta_uuid');
+          console.log('Object Store offline_venta_detalles creado');
+        }
+
+        if (!db.objectStoreNames.contains('offline_pago_efectivo')) {
+          const pagoStore = db.createObjectStore('offline_pago_efectivo', { keyPath: 'venta_uuid' });
+          pagoStore.createIndex('empresa_id', 'empresa_id');
+          console.log('Object Store offline_pago_efectivo creado');
         }
       };
 
@@ -866,6 +886,193 @@ export class OfflineStorageService {
   // CU8 — Validar sucursal pertenece a empresa actual
   validarSucursalPertenece(preparacion: OfflinePreparacion, sucursalId: number, empresaId: number): boolean {
     return preparacion.metadata.empresa_id === empresaId && preparacion.sucursal.id === sucursalId;
+  }
+
+  // CU9 — Guardar venta presencial offline (TRANSACCIÓN ATÓMICA)
+  async guardarVentaOffline(venta: {
+    uuid: string;
+    empresa_id: number;
+    cajero_id: number;
+    sucursal_id: number;
+    fecha_creacion: string;
+    total: number;
+    estado: string;
+    estado_sync: string;
+    tipo: string;
+    origen: string;
+    detalles: Array<{
+      uuid: string;
+      producto_variante_id: number;
+      cantidad: number;
+      precio_unitario: number;
+      subtotal: number;
+    }>;
+    pago: {
+      monto_total: number;
+      monto_recibido: number;
+      cambio: number;
+      fecha_cobro: string;
+    };
+  }): Promise<void> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(
+        ['offline_ventas', 'offline_venta_detalles', 'offline_pago_efectivo'],
+        'readwrite'
+      );
+      const ventasStore = transaction.objectStore('offline_ventas');
+      const detallesStore = transaction.objectStore('offline_venta_detalles');
+      const pagoStore = transaction.objectStore('offline_pago_efectivo');
+
+      try {
+        console.log(`[CU9 OFFLINE] Abriendo transacción para guardar venta: ${venta.uuid}`);
+
+        // Guardar cabecera
+        const ventaData = {
+          uuid: venta.uuid,
+          empresa_id: venta.empresa_id,
+          cajero_id: venta.cajero_id,
+          sucursal_id: venta.sucursal_id,
+          fecha_creacion: venta.fecha_creacion,
+          total: venta.total,
+          estado: venta.estado,
+          estado_sync: venta.estado_sync,
+          tipo: venta.tipo,
+          origen: venta.origen,
+        };
+        ventasStore.put(ventaData);
+        console.log(`[CU9 OFFLINE] put() venta enviado: ${venta.uuid}`);
+
+        // Guardar detalles
+        for (const detalle of venta.detalles) {
+          const detalleData = {
+            uuid: detalle.uuid,
+            venta_uuid: venta.uuid,
+            producto_variante_id: detalle.producto_variante_id,
+            cantidad: detalle.cantidad,
+            precio_unitario: detalle.precio_unitario,
+            subtotal: detalle.subtotal,
+          };
+          detallesStore.put(detalleData);
+        }
+        console.log(`[CU9 OFFLINE] put() detalles enviados: ${venta.detalles.length}`);
+
+        // Guardar pago
+        const pagoData = {
+          venta_uuid: venta.uuid,
+          monto_total: venta.pago.monto_total,
+          monto_recibido: venta.pago.monto_recibido,
+          cambio: venta.pago.cambio,
+          fecha_cobro: venta.pago.fecha_cobro,
+        };
+        pagoStore.put(pagoData);
+        console.log(`[CU9 OFFLINE] put() pago enviado: ${venta.uuid}`);
+      } catch (error) {
+        console.error(`[CU9 OFFLINE] EXCEPCIÓN al lanzar puts: ${(error as Error).message}`);
+        reject(new Error(`Error lanzando operaciones: ${(error as Error).message}`));
+        return;
+      }
+
+      transaction.oncomplete = () => {
+        console.log(`[CU9 OFFLINE] ✅ TRANSACCIÓN COMPLETADA: ${venta.uuid}`);
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        console.error(`[CU9 OFFLINE] ❌ TRANSACTION ERROR: ${transaction.error?.message}`);
+        reject(new Error(`Transaction error: ${transaction.error?.message}`));
+      };
+
+      transaction.onabort = () => {
+        console.error(`[CU9 OFFLINE] ❌ TRANSACTION ABORT: ${transaction.error?.message || 'unknown cause'}`);
+        reject(new Error(`Transaction aborted: ${transaction.error?.message || 'unknown cause'}`));
+      };
+    });
+  }
+
+  // CU9 — Obtener ventas presenciales offline pendientes
+  async obtenerVentasOfflinePendientes(empresaId: number): Promise<any[]> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offline_ventas'], 'readonly');
+      const store = transaction.objectStore('offline_ventas');
+      const index = store.index('empresa_id');
+
+      const request = index.getAll(empresaId);
+
+      request.onsuccess = () => {
+        const ventas = request.result.filter((v: any) => v.estado_sync === 'PENDIENTE_SYNC');
+        console.log(`[CU9 VENTAS PENDIENTES] total: ${ventas.length}`);
+        resolve(ventas);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Error al obtener ventas: ${request.error?.message}`));
+      };
+    });
+  }
+
+  // CU9 — Obtener detalles de una venta
+  private async obtenerDetallesVenta(ventaUuid: string): Promise<any[]> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offline_venta_detalles'], 'readonly');
+      const store = transaction.objectStore('offline_venta_detalles');
+      const index = store.index('venta_uuid');
+
+      const request = index.getAll(ventaUuid);
+
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Error al obtener detalles venta: ${request.error?.message}`));
+      };
+    });
+  }
+
+  // CU9 — Obtener pago de una venta
+  private async obtenerPagoVenta(ventaUuid: string): Promise<any | null> {
+    await this.dbReady;
+    const db = this.db;
+
+    if (!db) {
+      throw new Error('IndexedDB no está disponible');
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offline_pago_efectivo'], 'readonly');
+      const store = transaction.objectStore('offline_pago_efectivo');
+
+      const request = store.get(ventaUuid);
+
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Error al obtener pago: ${request.error?.message}`));
+      };
+    });
   }
 
 }

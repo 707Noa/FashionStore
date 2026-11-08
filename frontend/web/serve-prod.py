@@ -27,7 +27,7 @@ class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
 with socketserver.TCPServer(("", PORT), MyHTTPRequestHandler) as httpd:
-    print("[OK] Production server at http://localhost:5000")
+    print("[OK] Production server at http://localhost:4200")
     print("[OK] Serving from: {}".format(dist_dir))
     print("[OK] Press Ctrl+C to stop")
     try:
