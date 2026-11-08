@@ -1024,6 +1024,94 @@ export class OfflineStorageService {
     });
   }
 
+  // CU9 STOCK CONTROL — Calcular stock disponible considerando ventas offline locales
+  async obtenerStockDisponibleLocal(
+    empresaId: number,
+    sucursalId: number,
+    productoVarianteId: number,
+  ): Promise<number> {
+    try {
+      // 1. Obtener preparaciones para esta empresa/sucursal
+      const preparaciones = await this.getAllPreparaciones(empresaId);
+      const preparacion = preparaciones.find((p: any) => p.metadata?.sucursal_id === sucursalId);
+
+      if (!preparacion) {
+        console.warn(
+          `[CU9 STOCK] No hay preparación para empresa=${empresaId}, sucursal=${sucursalId}`
+        );
+        return 0;
+      }
+
+      // 2. Encontrar stock base de la variante en la preparación
+      let stockBase = 0;
+      for (const producto of preparacion.productos || []) {
+        for (const variante of producto.variantes || []) {
+          if (variante.id === productoVarianteId) {
+            stockBase = variante.stock_disponible || 0;
+            break;
+          }
+        }
+        if (stockBase > 0) break;
+      }
+
+      if (stockBase === 0) {
+        console.warn(`[CU9 STOCK] Variante ${productoVarianteId} no encontrada o sin stock`);
+        return 0;
+      }
+
+      // 3. Obtener ventas offline pendientes
+      const ventasOffline = await this.obtenerVentasOfflinePendientes(empresaId);
+      let cantidadComprometidaVentas = 0;
+
+      for (const venta of ventasOffline) {
+        // Solo contar si es la misma sucursal
+        if (venta.sucursal_id !== sucursalId) continue;
+
+        // Obtener detalles de esta venta
+        const detalles = await this.obtenerDetallesVenta(venta.uuid);
+        for (const detalle of detalles) {
+          if (detalle.producto_variante_id === productoVarianteId) {
+            cantidadComprometidaVentas += detalle.cantidad || 0;
+          }
+        }
+      }
+
+      // 4. Obtener reservas offline pendientes (CU8)
+      let cantidadComprometidaReservas = 0;
+      const reservasOffline = await this.getReservasOfflinePendientes(empresaId);
+
+      for (const reserva of reservasOffline) {
+        // Solo contar si es la misma sucursal
+        if (reserva.sucursal_id !== sucursalId) continue;
+
+        // Obtener detalles de esta reserva
+        const detalles = await this.getDetallesReserva(reserva.uuid);
+        for (const detalle of detalles) {
+          if (detalle.producto_variante_id === productoVarianteId) {
+            cantidadComprometidaReservas += detalle.cantidad || 0;
+          }
+        }
+      }
+
+      // 5. Calcular disponibilidad local
+      const disponible = Math.max(
+        0,
+        stockBase - cantidadComprometidaVentas - cantidadComprometidaReservas
+      );
+
+      console.log(
+        `[CU9 STOCK CALC] variante=${productoVarianteId}, stock_base=${stockBase}, ` +
+        `ventas_comprometidas=${cantidadComprometidaVentas}, reservas=${cantidadComprometidaReservas}, ` +
+        `disponible=${disponible}`
+      );
+
+      return disponible;
+    } catch (error) {
+      console.error('[CU9 STOCK] Error al calcular disponibilidad:', error);
+      return 0;
+    }
+  }
+
   // CU9 — Obtener detalles de una venta
   private async obtenerDetallesVenta(ventaUuid: string): Promise<any[]> {
     await this.dbReady;

@@ -212,6 +212,25 @@ export class ProcesarPago {
       subtotal: d.subtotal,
     }));
 
+    // CU9 STOCK CONTROL — Revalidación final antes de guardar
+    for (const detalle of venta.detalles) {
+      const varianteId = detalle.variante?.id || 0;
+      const disponibleLocal = await this.offlineStorage.obtenerStockDisponibleLocal(
+        empresaId,
+        sucursalId,
+        varianteId,
+      );
+
+      if (detalle.cantidad > disponibleLocal) {
+        this.confirmando.set(false);
+        this.toast.error(
+          `Stock insuficiente para ${detalle.producto.nombre}. ` +
+          `Disponible: ${disponibleLocal}, Solicitado: ${detalle.cantidad}`
+        );
+        return;
+      }
+    }
+
     await this.offlineStorage.guardarVentaOffline({
       uuid: ventaUuid,
       empresa_id: empresaId,

@@ -61,11 +61,20 @@ export class VentaPresencialService {
       for (const preparacion of preparaciones) {
         if (!preparacion.productos) continue;
 
+        const sucursalId = preparacion.metadata?.sucursal_id || 1;
+
         for (const producto of preparacion.productos) {
           if (!producto.es_activo) continue;
 
           if (producto.nombre.toLowerCase().includes(nombreBajo)) {
             for (const variante of producto.variantes) {
+              // CU9 STOCK CONTROL — Calcular disponible considerando ventas offline
+              const disponibleLocal = await this.offlineStorage.obtenerStockDisponibleLocal(
+                empresaId,
+                sucursalId,
+                variante.id,
+              );
+
               resultados.push({
                 producto_variante_id: variante.id,
                 producto: { id: producto.id, nombre: producto.nombre, imagen_principal_url: producto.imagen_principal_url },
@@ -73,7 +82,7 @@ export class VentaPresencialService {
                 precio_unitario: variante.precio,
                 en_promocion: producto.en_promocion,
                 porcentaje_descuento: producto.porcentaje_descuento,
-                disponible: variante.stock_disponible,
+                disponible: disponibleLocal,
               });
             }
           }
