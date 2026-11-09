@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import {
@@ -9,17 +10,21 @@ import {
   TallaPublica,
 } from '../catalogo.model';
 import { CatalogoService } from '../catalogo.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ProductCard } from '../../home/product-card/product-card';
+import { ConnectivityService } from '../../../../core/services/connectivity.service';
 
 @Component({
   selector: 'app-catalogo-page',
-  imports: [FormsModule, ProductCard],
+  imports: [FormsModule, ProductCard, CommonModule],
   templateUrl: './catalogo-page.html',
   styleUrl: './catalogo-page.scss',
 })
-export class CatalogoPage {
+export class CatalogoPage implements OnInit {
   private readonly catalogoService = inject(CatalogoService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly authService = inject(AuthService);
+  private readonly connectivity = inject(ConnectivityService);
 
   protected readonly productos = signal<ProductoPublico[]>([]);
   protected readonly categorias = signal<CategoriaPublica[]>([]);
@@ -28,6 +33,7 @@ export class CatalogoPage {
   protected readonly colores = signal<ColorPublico[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly isOffline = signal(false);
 
   protected readonly searchTerm = signal('');
   protected readonly categoriaId = signal<number | null>(null);
@@ -37,7 +43,18 @@ export class CatalogoPage {
 
   private searchDebounce?: ReturnType<typeof setTimeout>;
 
-  constructor() {
+  ngOnInit(): void {
+    this.connectivity.isOnline$.subscribe((isOnline) => {
+      this.isOffline.set(!isOnline);
+      if (!isOnline && this.loading()) {
+        this.errorMessage.set('Sin conexión — mostrando información local');
+      }
+    });
+
+    this.loadInitialData();
+  }
+
+  private loadInitialData(): void {
     this.catalogoService.listCategorias().subscribe((valores) => this.categorias.set(valores));
     this.catalogoService.listColecciones().subscribe((valores) => this.colecciones.set(valores));
     this.catalogoService.listTallas().subscribe((valores) => this.tallas.set(valores));
@@ -97,6 +114,7 @@ export class CatalogoPage {
   load(): void {
     this.loading.set(true);
     this.errorMessage.set(null);
+    const usuario = this.authService.usuario();
     this.catalogoService
       .listProductos({
         search: this.searchTerm() || undefined,
@@ -104,6 +122,7 @@ export class CatalogoPage {
         coleccion_id: this.coleccionId() ?? undefined,
         talla_id: this.tallaId() ?? undefined,
         color_id: this.colorId() ?? undefined,
+        empresa_id: usuario?.empresa_id ?? undefined,
       })
       .subscribe({
         next: (productos) => {

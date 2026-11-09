@@ -21,11 +21,11 @@ const CLASES_ESTADO: Record<EstadoPromocion, string> = {
   DESACTIVADA: 'badge--inactive',
 };
 
-// Solo una promoción PROGRAMADA o ACTIVA admite Editar/Desactivar -- una ya
-// FINALIZADA o DESACTIVADA solo se puede consultar (ver backend,
-// service.py: editar() rechaza ambos estados; desactivar() no tiene sentido
-// sobre algo que ya terminó o ya está apagado).
-const ESTADOS_GESTIONABLES: EstadoPromocion[] = ['PROGRAMADA', 'ACTIVA'];
+// Una promoción PROGRAMADA, ACTIVA o FINALIZADA admite Editar (para extender
+// vigencia). DESACTIVADA no se puede editar -- debe reactivarse primero.
+// desactivar() solo tiene sentido sobre PROGRAMADA o ACTIVA (no sobre algo
+// que ya terminó por fecha).
+const ESTADOS_GESTIONABLES: EstadoPromocion[] = ['PROGRAMADA', 'ACTIVA', 'FINALIZADA'];
 
 /**
  * CU32 -- Gestionar promociones (Administrador). Mismo patrón visual/
@@ -141,6 +141,29 @@ export class Promociones {
     });
   }
 
+  async activar(promocion: PromocionListado, event: Event): Promise<void> {
+    event.stopPropagation();
+    this.openMenuId.set(null);
+
+    const confirmed = await this.confirmDialog.confirm({
+      title: '¿Activar promoción?',
+      message: `"${promocion.nombre}" volverá a aplicar el descuento.`,
+      confirmText: 'Activar',
+      danger: false,
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.service.activate(promocion.id).subscribe({
+      next: () => {
+        this.toast.success('Promoción activada.');
+        this.load();
+      },
+      error: () => this.toast.error('No se pudo activar la promoción. Inténtalo nuevamente.'),
+    });
+  }
+
   async desactivar(promocion: PromocionListado, event: Event): Promise<void> {
     event.stopPropagation();
     this.openMenuId.set(null);
@@ -161,6 +184,29 @@ export class Promociones {
         this.load();
       },
       error: () => this.toast.error('No se pudo desactivar la promoción. Inténtalo nuevamente.'),
+    });
+  }
+
+  async eliminar(promocion: PromocionListado, event: Event): Promise<void> {
+    event.stopPropagation();
+    this.openMenuId.set(null);
+
+    const confirmed = await this.confirmDialog.confirm({
+      title: '¿Eliminar promoción?',
+      message: `Se eliminará permanentemente "${promocion.nombre}". Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.service.delete(promocion.id).subscribe({
+      next: () => {
+        this.toast.success('Promoción eliminada.');
+        this.load();
+      },
+      error: () => this.toast.error('No se pudo eliminar la promoción. Inténtalo nuevamente.'),
     });
   }
 

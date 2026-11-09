@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/proveedor/disponibilidad/disponibilidad.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\n.disponibilidad-list {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 10px;\r\n  margin-top: 16px;\r\n  list-style: none;\r\n  padding: 0;\r\n}\r\n\r\n.disponibilidad-item {\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: space-between;\r\n  gap: 16px;\r\n  padding: 14px 16px;\r\n  border: 1px solid var(--color-border);\r\n  border-radius: var(--radius-md);\r\n  flex-wrap: wrap;\r\n}\r\n\r\n.disponibilidad-item__info {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 2px;\r\n  min-width: 0;\r\n}\r\n\r\n.disponibilidad-item__nombre {\r\n  font-size: 13.5px;\r\n  font-weight: 600;\r\n  color: var(--color-text);\r\n}\r\n\r\n.disponibilidad-item__meta {\r\n  font-size: 12px;\r\n  color: var(--color-text-secondary);\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAGF,CAAA;AACE,WAAA;AACA,kBAAA;AACA,OAAA;AACA,cAAA;AACA,cAAA;AACA,WAAA;;AAGF,CAAA;AACE,WAAA;AACA,eAAA;AACA,mBAAA;AACA,OAAA;AACA,WAAA,KAAA;AACA,UAAA,IAAA,MAAA,IAAA;AACA,iBAAA,IAAA;AACA,aAAA;;AAGF,CAAA;AACE,WAAA;AACA,kBAAA;AACA,OAAA;AACA,aAAA;;AAGF,CAAA;AACE,aAAA;AACA,eAAA;AACA,SAAA,IAAA;;AAGF,CAAA;AACE,aAAA;AACA,SAAA,IAAA;;",
+  "names": []
+}

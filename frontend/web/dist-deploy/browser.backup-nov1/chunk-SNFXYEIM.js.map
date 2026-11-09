@@ -1,0 +1,14 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/features/admin/dashboard/dashboard.ts",
+    "src/app/features/admin/dashboard/dashboard.html"
+  ],
+  "sourcesContent": [
+    "import { Component } from '@angular/core';\r\n\r\n/**\r\n * Panel de inicio del administrador. Todavía no existen CU08 (productos),\r\n * CU06 (sucursales) ni CU09-datos-reales, así que solo se muestran estados\r\n * vacíos honestos — nunca estadísticas inventadas.\r\n */\r\n@Component({\r\n  selector: 'app-dashboard',\r\n  templateUrl: './dashboard.html',\r\n  styleUrl: './dashboard.scss',\r\n})\r\nexport class Dashboard {\r\n  protected readonly cards = [\r\n    { title: 'Sucursales', message: 'Todavía no existen sucursales registradas.' },\r\n    { title: 'Productos', message: 'Todavía no existen productos registrados.' },\r\n    { title: 'Reservas', message: 'Todavía no existen reservas registradas.' },\r\n    { title: 'Ventas', message: 'Todavía no existen ventas registradas.' },\r\n  ];\r\n}\r\n",
+    "<div class=\"dashboard-grid\">\r\n  @for (card of cards; track card.title) {\r\n    <div class=\"admin-card dashboard-card\">\r\n      <h3>{{ card.title }}</h3>\r\n      <p>{{ card.message }}</p>\r\n    </div>\r\n  }\r\n</div>\r\n\r\n<div class=\"admin-card dashboard-hint\">\r\n  <p>Configure FashionStore para comenzar: cree sucursales, categorías y productos desde el menú.</p>\r\n</div>\r\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;;;;;ACEI,IAAA,4BAAA,GAAA,OAAA,CAAA,EAAuC,GAAA,IAAA;AACjC,IAAA,iBAAA,CAAA;AAAgB,IAAA,0BAAA;AACpB,IAAA,4BAAA,GAAA,GAAA;AAAG,IAAA,iBAAA,CAAA;AAAkB,IAAA,0BAAA,EAAI;;;;AADrB,IAAA,oBAAA,CAAA;AAAA,IAAA,4BAAA,QAAA,KAAA;AACD,IAAA,oBAAA,CAAA;AAAA,IAAA,4BAAA,QAAA,OAAA;;;ADQH,IAAO,YAAP,MAAO,WAAS;EACD,QAAQ;IACzB,EAAE,OAAO,cAAc,SAAS,gDAA4C;IAC5E,EAAE,OAAO,aAAa,SAAS,+CAA2C;IAC1E,EAAE,OAAO,YAAY,SAAS,8CAA0C;IACxE,EAAE,OAAO,UAAU,SAAS,4CAAwC;;;qCAL3D,YAAS;EAAA;yEAAT,YAAS,WAAA,CAAA,CAAA,eAAA,CAAA,GAAA,OAAA,GAAA,MAAA,GAAA,QAAA,CAAA,CAAA,GAAA,gBAAA,GAAA,CAAA,GAAA,cAAA,gBAAA,GAAA,CAAA,GAAA,cAAA,gBAAA,CAAA,GAAA,UAAA,SAAA,mBAAA,IAAA,KAAA;AAAA,QAAA,KAAA,GAAA;ACZtB,MAAA,4BAAA,GAAA,OAAA,CAAA;AACE,MAAA,2BAAA,GAAA,0BAAA,GAAA,GAAA,OAAA,GAAA,UAAA;AAMF,MAAA,0BAAA;AAEA,MAAA,4BAAA,GAAA,OAAA,CAAA,EAAuC,GAAA,GAAA;AAClC,MAAA,iBAAA,GAAA,oGAAA;AAA4F,MAAA,0BAAA,EAAI;;;AATnG,MAAA,oBAAA;AAAA,MAAA,qBAAA,IAAA,KAAA;;;;;sEDWW,WAAS,CAAA;UALrB;uBACW,iBAAe,UAAA,8YAAA,QAAA,CAAA,yoBAAA,EAAA,CAAA;;;;6EAId,WAAS,EAAA,WAAA,aAAA,UAAA,iDAAA,YAAA,GAAA,CAAA;AAAA,GAAA;",
+  "names": [],
+  "debugId": "64013895-0c55-5e7a-9c20-06f55b0a7f72"
+}

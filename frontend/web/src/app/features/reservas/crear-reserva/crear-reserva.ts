@@ -7,6 +7,9 @@ import { formatearFechaReserva, formatearHorarioReserva } from '../reserva-forma
 import { ReservaOut } from './crear-reserva.model';
 import { CrearReservaService } from './crear-reserva.service';
 import { bloquesHorarioDisponibles, fechaMaximaIso, hoyIso, proximosDias } from './horario-reserva';
+import { ConnectivityService } from '../../../core/services/connectivity.service';
+import { OfflineStorageService } from '../../../core/services/offline-storage.service';
+import { generarUUID } from '../../../core/utils/uuid';
 
 /**
  * CU17 -- Crear reserva de prendas (Cliente), incluido agregar una prenda a
@@ -69,6 +72,8 @@ export class CrearReserva {
   private readonly service = inject(CrearReservaService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  protected readonly connectivity = inject(ConnectivityService);
+  private readonly offlineStorage = inject(OfflineStorageService);
 
   readonly productoVarianteId = input<number | null>(null);
   readonly sucursalId = input<number | null>(null);
@@ -239,16 +244,150 @@ export class CrearReserva {
   }
 
   confirmar(): void {
+    console.log('[CU8 CONFIRM] Iniciando flujo de confirmación');
     if (!this.puedeConfirmar) {
+      console.log('[CU8 CONFIRM] Validación de entrada fallida');
       return;
     }
 
     if (!this.isAuthenticated()) {
+      console.log('[CU8 CONFIRM] No autenticado, redirigiendo a login');
       const url = `${this.returnUrl()}&fecha=${this.fechaSeleccionada()}&hora=${this.horaSeleccionada()}`;
       this.router.navigate(['/login'], { queryParams: { returnUrl: url } });
       return;
     }
 
+    // CU8 -- Bifurcación online/offline
+    const isOnline = this.connectivity.isOnline();
+    console.log(`[CU8 BIFURCACION] isOnline()=${isOnline}`);
+
+    if (!isOnline) {
+      console.log('[CU8 BIFURCACION] ✅ Entra a OFFLINE — usando IndexedDB');
+      this._crearReservaOffline();
+      return;
+    }
+
+    console.log('[CU8 BIFURCACION] ❌ Entra a ONLINE — usando HTTP');
+    this._crearReservaOnline();
+  }
+
+  private async _crearReservaOffline(): Promise<void> {
+    console.log('[CU8 OFFLINE] Iniciando guardado en IndexedDB — NO se harán peticiones HTTP');
+    const usuario = this.auth.usuario();
+    if (!usuario) {
+      this.toast.error('No hay sesión activa. Inténtalo nuevamente.');
+      return;
+    }
+
+    this.submitting.set(true);
+
+    try {
+      const empresaId = usuario.empresa_id || 0;
+      const sucursalId = this.sucursalId()!;
+      const productoVarianteId = this.productoVarianteId()!;
+      const cantidad = 1;
+      const fecha = this.fechaSeleccionada()!;
+      const hora = this.horaSeleccionada()!;
+
+      // Validación 1: Verificar que existe preparación local (CU6)
+      console.log(`[CU8] Validación 1: Buscando preparación para empresa=${empresaId}, sucursal=${sucursalId}`);
+      const preparacion = await this.offlineStorage.getPreparacionActual(empresaId, sucursalId);
+      console.log(`[CU8] Validación 1 resultado:`, preparacion);
+      if (!preparacion) {
+        this.submitting.set(false);
+        this.toast.error('No hay datos locales disponibles. Descarga la información nuevamente.');
+        return;
+      }
+      console.log(`[CU8] Validación 1: ✅ PASADA`);
+
+      // Validación 2: Verificar sucursal pertenece a empresa
+      if (!this.offlineStorage.validarSucursalPertenece(preparacion, sucursalId, empresaId)) {
+        this.submitting.set(false);
+        this.toast.error('La sucursal seleccionada no pertenece a tu empresa.');
+        return;
+      }
+
+      // Validación 3: Verificar variante existe en datos locales
+      const variante = this.offlineStorage.getVariantePorId(preparacion, productoVarianteId);
+      if (!variante) {
+        this.submitting.set(false);
+        this.toast.error('La variante seleccionada no existe o no está disponible.');
+        return;
+      }
+
+      // Validación 4: Verificar cantidad es número entero positivo
+      if (!Number.isInteger(cantidad) || cantidad <= 0) {
+        this.submitting.set(false);
+        this.toast.error('La cantidad debe ser un número entero positivo.');
+        return;
+      }
+
+      // Validación 5: Verificar stock local suficiente
+      if (variante.stock_disponible < cantidad) {
+        this.submitting.set(false);
+        this.toast.error(
+          `Stock insuficiente. Disponible: ${variante.stock_disponible}, solicitado: ${cantidad}`
+        );
+        return;
+      }
+
+      // Validación 6: Verificar fecha y hora son válidas (usando reglas de CU7)
+      const hoy = hoyIso();
+      const fechaMaxima = fechaMaximaIso();
+      if (fecha < hoy || fecha > fechaMaxima) {
+        this.submitting.set(false);
+        this.toast.error('La fecha seleccionada está fuera del rango permitido (próximos 7 días).');
+        return;
+      }
+
+      const bloqueValido = bloquesHorarioDisponibles(fecha).includes(hora);
+      if (!bloqueValido) {
+        this.submitting.set(false);
+        this.toast.error('La hora seleccionada no es válida para esta fecha.');
+        return;
+      }
+
+      // Todas las validaciones pasaron — guardar reserva offline
+      const uuid = generarUUID();
+      const ahora = new Date().toISOString();
+
+      const reservaOffline = {
+        uuid,
+        empresa_id: empresaId,
+        cliente_id: usuario.id,
+        sucursal_id: sucursalId,
+        fecha_reserva: fecha,
+        hora_inicio: hora,
+        estado_general: 'PENDIENTE',
+        estado_sync: 'PENDIENTE_SYNC',
+        fecha_creacion_local: ahora,
+        detalles: [
+          {
+            uuid: generarUUID(),
+            producto_variante_id: productoVarianteId,
+            cantidad,
+            estado: 'PENDIENTE',
+            estado_sync: 'PENDIENTE_SYNC',
+          },
+        ],
+      };
+
+      await this.offlineStorage.saveReservaOffline(reservaOffline, empresaId);
+
+      this.submitting.set(false);
+      this.modalAbierto.set(false);
+      this.fechaSeleccionada.set(null);
+      this.horaSeleccionada.set(null);
+      this.toast.brand(`Reserva guardada localmente (offline). UUID: ${uuid}`);
+      this.reservado.emit();
+    } catch (error) {
+      this.submitting.set(false);
+      console.error('[CU08 ERROR]', error);
+      this.toast.error('No se pudo guardar la reserva offline. Inténtalo nuevamente.');
+    }
+  }
+
+  private _crearReservaOnline(): void {
     this.submitting.set(true);
     this.service
       .crear({

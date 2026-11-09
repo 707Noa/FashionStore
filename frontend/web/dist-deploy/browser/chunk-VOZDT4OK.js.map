@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/core/utils/resolve-media-url.ts"
+  ],
+  "sourcesContent": [
+    "import { environment } from '../../../environments/environment';\r\n\r\n// Las URLs de imagen que devuelve FastAPI pueden venir en dos formas (ver\r\n// backend/app/core/image_storage.py):\r\n// - relativas, con el prefijo de la API, p.ej. \"/api/v1/media/productos/x.jpg\"\r\n//   (desarrollo local, servidas por el propio FastAPI); o\r\n// - absolutas HTTPS, p.ej. \"https://xxx.public.blob.vercel-storage.com/...\"\r\n//   (producción en Vercel, Vercel Blob las sirve directamente).\r\n// Una URL absoluta ya es la URL pública final y no debe concatenarse con el\r\n// host de la API -- solo las relativas necesitan resolverse contra\r\n// environment.apiUrl (host completo de FastAPI, ver environment.ts).\r\nexport function resolveMediaUrl(path: string | null | undefined): string | null {\r\n  if (!path) {\r\n    return null;\r\n  }\r\n  if (/^https?:\\/\\//i.test(path)) {\r\n    return path;\r\n  }\r\n  const origin = environment.apiUrl.replace(/\\/api\\/v1\\/?$/, '');\r\n  return `${origin}${path}`;\r\n}\r\n"
+  ],
+  "mappings": ";;;;;AAWO,SAAS,gBAAgB,MAAgD;AAC9E,MAAI,CAAC,MAAM;AACT,WAAO;AAAA,EACT;AACA,MAAI,gBAAgB,KAAK,IAAI,GAAG;AAC9B,WAAO;AAAA,EACT;AACA,QAAM,SAAS,YAAY,OAAO,QAAQ,iBAAiB,EAAE;AAC7D,SAAO,GAAG,MAAM,GAAG,IAAI;AACzB;",
+  "names": [],
+  "debugId": "f8868581-c616-5d50-a545-dbb4fc5554b1"
+}

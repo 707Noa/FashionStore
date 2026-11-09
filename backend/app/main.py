@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.image_storage import UPLOADS_ROOT
@@ -54,6 +53,18 @@ from modules.P2_UsuariosYAccesos.CU04_ActualizarPerfil.router import (
 from modules.P2_UsuariosYAccesos.CU05_GestionarUsuariosRoles.router import (
     router as cu05_usuarios_roles_router,
 )
+from modules.P7_GestionSaaSySuscripciones.CU01_RegistrarEmpresa.router import (
+    router as cu01_registrar_empresa_router,
+)
+from modules.P7_GestionSaaSySuscripciones.CU02_GestionarAdministradorEmpresa.router import (
+    router as cu02_gestionar_admin_router,
+)
+from modules.P7_GestionSaaSySuscripciones.CU04_GestionarPlanesSaaS.router import (
+    router as cu04_planes_router,
+)
+from modules.P7_GestionSaaSySuscripciones.CU05_GestionarSuscripcionEmpresa.router import (
+    router as cu05_suscripciones_router,
+)
 from modules.P4_ReservasYAtencion.CU17_CrearReservaPrendas.router import (
     router as cu17_crear_reserva_router,
 )
@@ -96,6 +107,12 @@ from modules.P6_InnovacionYAnalisis.CU29_ObtenerRecomendacionesIA.router import 
 from modules.P6_InnovacionYAnalisis.CU30_ConsultarReportesIndicadores.router import (
     router as cu30_reportes_router,
 )
+from modules.PK08_OperacionOfflineWebYMovil.CU06_PrepararInformacionOffline.router import (
+    router as cu06_offline_router,
+)
+from modules.PK08_OperacionOfflineWebYMovil.CU06_PrepararInformacionOffline.media_router import (
+    router as media_router,
+)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -120,6 +137,10 @@ app.include_router(cu02_registrar_cliente_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu03_recuperar_contrasena_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu04_actualizar_perfil_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu05_usuarios_roles_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu01_registrar_empresa_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu02_gestionar_admin_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu04_planes_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu05_suscripciones_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu06_ciudades_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu06_sucursales_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu07_sucursales_publico_router, prefix=settings.API_V1_PREFIX)
@@ -150,12 +171,11 @@ app.include_router(cu31_comprobante_venta_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu32_promociones_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu29_asistente_ia_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu30_reportes_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu06_offline_router, prefix=settings.API_V1_PREFIX)
+app.include_router(media_router, prefix=settings.API_V1_PREFIX)
 
-# Sirve las imágenes subidas por el Administrador (CU08/CU09) -- ver
-# app/core/image_storage.py. Montado bajo API_V1_PREFIX para que Nginx, que ya
-# reenvía "/api/" al backend, sirva estas URLs sin configuración adicional.
+# Crear directorio de uploads (servido por media_router que pasa por CORSMiddleware)
 UPLOADS_ROOT.mkdir(parents=True, exist_ok=True)
-app.mount(f"{settings.API_V1_PREFIX}/media", StaticFiles(directory=str(UPLOADS_ROOT)), name="media")
 
 
 @app.get("/", tags=["root"])

@@ -3,7 +3,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 # "build:docker-local" (configuration development) -- NO "npm run build": ese
@@ -15,7 +15,7 @@ COPY . .
 # local y no a producción. El deploy real en Vercel sigue usando
 # "npm run build" tal cual (ver vercel.json) y no se ve afectado por este
 # cambio.
-RUN npm run build:docker-local
+RUN rm -rf dist .angular node_modules/.cache && npm run build:docker-local
 
 # ---- Etapa 2: servir los archivos estáticos con Nginx ----
 FROM nginx:1.27-alpine

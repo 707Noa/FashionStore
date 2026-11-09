@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/encargado/reservas/atender-reserva/atender-reserva.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n  margin-top: 4px;\r\n}\r\n\r\n.atender-acciones {\r\n  display: flex;\r\n  flex-wrap: wrap;\r\n  gap: 8px;\r\n}\r\n\r\n@media (max-width: 480px) {\r\n  .atender-acciones {\r\n    flex-direction: column;\r\n    align-items: stretch;\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;AACA,cAAA;;AAGF,CAAA;AACE,WAAA;AACA,aAAA;AACA,OAAA;;AAGF,QAAA,WAAA;AACE,GAPF;AAQI,oBAAA;AACA,iBAAA;;;",
+  "names": []
+}

@@ -21,7 +21,7 @@ app/core/image_storage.py -- por eso es nullable a nivel de base de datos
 
 from decimal import Decimal
 
-from sqlalchemy import Boolean, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, ForeignKey, ForeignKeyConstraint, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -29,6 +29,7 @@ from app.db.base import Base
 from .categoria import Categoria
 from .coleccion import Coleccion
 from .color import Color
+from modules.P7_GestionSaaSySuscripciones.Models.empresa import Empresa
 from .producto_color import producto_colores
 from .producto_imagen import ProductoImagen
 from .producto_talla import producto_tallas
@@ -40,8 +41,10 @@ from .temporada import Temporada
 
 class Producto(Base):
     __tablename__ = "productos"
+    __table_args__ = ()
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(ForeignKey("empresas.id"), nullable=False)
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
@@ -57,6 +60,7 @@ class Producto(Base):
     imagen_principal_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    empresa: Mapped[Empresa] = relationship(lazy="joined")
     proveedor: Mapped[Proveedor] = relationship(lazy="joined")
     categoria: Mapped[Categoria] = relationship(lazy="joined")
     temporada: Mapped[Temporada] = relationship(lazy="joined")

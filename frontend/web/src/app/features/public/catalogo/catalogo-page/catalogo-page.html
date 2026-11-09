@@ -1,4 +1,10 @@
 <div class="container catalogo-page">
+  @if (isOffline()) {
+    <div class="offline-banner">
+      <span>Sin conexión — mostrando información local</span>
+    </div>
+  }
+
   <div class="page-header">
     @if (coleccionSeleccionada; as coleccion) {
       <span class="page-header__eyebrow">Colección · Temporada {{ coleccion.temporada.nombre }}</span>

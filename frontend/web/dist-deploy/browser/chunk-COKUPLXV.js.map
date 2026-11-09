@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/core/ui/confirm-dialog/confirm-dialog.service.ts"
+  ],
+  "sourcesContent": [
+    "import { Injectable, signal } from '@angular/core';\r\n\r\nexport interface ConfirmDialogConfig {\r\n  title: string;\r\n  message: string;\r\n  confirmText?: string;\r\n  cancelText?: string;\r\n  danger?: boolean;\r\n}\r\n\r\n@Injectable({ providedIn: 'root' })\r\nexport class ConfirmDialogService {\r\n  private readonly _config = signal<ConfirmDialogConfig | null>(null);\r\n  readonly config = this._config.asReadonly();\r\n\r\n  private resolver: ((result: boolean) => void) | null = null;\r\n\r\n  confirm(config: ConfirmDialogConfig): Promise<boolean> {\r\n    this._config.set(config);\r\n    return new Promise<boolean>((resolve) => {\r\n      this.resolver = resolve;\r\n    });\r\n  }\r\n\r\n  resolve(result: boolean): void {\r\n    this._config.set(null);\r\n    this.resolver?.(result);\r\n    this.resolver = null;\r\n  }\r\n}\r\n"
+  ],
+  "mappings": ";;;;;;;;AAWM,IAAO,uBAAP,MAAO,sBAAoB;EACd,UAAU;IAAmC;;;;;;EACrD,SAAS,KAAK,QAAQ,WAAU;EAEjC,WAA+C;EAEvD,QAAQ,QAA8C;AACpD,SAAK,QAAQ,IAAI,MAAM;AACvB,WAAO,IAAI,QAAiB,CAAC,YAAW;AACtC,WAAK,WAAW;IAClB,CAAC;EACH;EAEA,QAAQ,QAAsB;AAC5B,SAAK,QAAQ,IAAI,IAAI;AACrB,SAAK,WAAW,MAAM;AACtB,SAAK,WAAW;EAClB;;qCAjBW,uBAAoB;EAAA;4EAApB,uBAAoB,SAApB,sBAAoB,WAAA,YADP,OAAM,CAAA;;;sEACnB,sBAAoB,CAAA;UADhC;WAAW,EAAE,YAAY,OAAM,CAAE;;;",
+  "names": [],
+  "debugId": "4af72e5d-7caf-57a3-b343-24125c0bc73e"
+}

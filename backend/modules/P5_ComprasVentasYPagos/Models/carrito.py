@@ -41,7 +41,7 @@ un producto.
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, ForeignKeyConstraint, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -50,10 +50,12 @@ from modules.P1_SucursalesYCatalogos.Models.producto_variante import ProductoVar
 
 class Carrito(Base):
     __tablename__ = "carritos"
-    __table_args__ = (UniqueConstraint("cliente_id", name="uq_carritos_cliente_id"),)
+    __table_args__ = (
+        UniqueConstraint("cliente_id", name="uq_carritos_cliente_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    cliente_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    cliente_id: Mapped[int] = mapped_column(nullable=False)
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     fecha_actualizacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -4,6 +4,7 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   ActualizarPerfilRequest,
+  EmpresaPublica,
   ForgotPasswordRequest,
   LoginResponse,
   MensajeGenericoResponse,
@@ -30,11 +31,19 @@ const USER_KEY = 'fashionstore_usuario';
 export class AuthService {
   private readonly http = inject(HttpClient);
 
-  private readonly _usuario = signal<Usuario | null>(this.leerUsuarioAlmacenado());
-  private readonly _token = signal<string | null>(this.leerTokenAlmacenado());
+  private readonly _usuario = signal<Usuario | null>(null);
+  private readonly _token = signal<string | null>(null);
 
   readonly usuario = this._usuario.asReadonly();
   readonly isAuthenticated = computed(() => this._token() !== null);
+
+  constructor() {
+    // Restaurar sesión guardada en localStorage
+    console.log('[AuthService] Constructor ejecutado');
+    console.log('[AuthService] localStorage.usuario antes:', localStorage.getItem('fashionstore_usuario'));
+    this.initializeFromStorage();
+    console.log('[AuthService] _usuario después de initialize:', this.usuario());
+  }
 
   login(correo: string, password: string): Observable<LoginResponse> {
     return this.http
@@ -81,6 +90,16 @@ export class AuthService {
       .pipe(tap((usuario) => this.actualizarUsuarioEnSesion(usuario)));
   }
 
+  obtenerEmpresa(slug: string): Observable<EmpresaPublica> {
+    return this.http.get<EmpresaPublica>(`${environment.apiUrl}/empresas/${slug}`);
+  }
+
+  obtenerEmpresasActivas(): Observable<Array<{ id: number; slug: string; nombre: string }>> {
+    return this.http.get<Array<{ id: number; slug: string; nombre: string }>>(
+      `${environment.apiUrl}/empresas/activas`
+    );
+  }
+
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -109,6 +128,23 @@ export class AuthService {
   private actualizarUsuarioEnSesion(usuario: Usuario): void {
     localStorage.setItem(USER_KEY, JSON.stringify(usuario));
     this._usuario.set(usuario);
+  }
+
+  private initializeFromStorage(): void {
+    console.log('[initializeFromStorage] START');
+    const usuario = this.leerUsuarioAlmacenado();
+    console.log('[initializeFromStorage] usuario leído:', usuario);
+    const token = this.leerTokenAlmacenado();
+    console.log('[initializeFromStorage] token leído:', token ? 'existe' : 'null');
+    if (usuario) {
+      console.log('[initializeFromStorage] Setting usuario en signal');
+      this._usuario.set(usuario);
+      console.log('[initializeFromStorage] usuario set, valor ahora:', this._usuario());
+    }
+    if (token) {
+      this._token.set(token);
+    }
+    console.log('[initializeFromStorage] END');
   }
 
   private leerTokenAlmacenado(): string | null {

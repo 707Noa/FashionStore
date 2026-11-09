@@ -5,6 +5,11 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from modules.P2_UsuariosYAccesos.Models.rol import RolUsuario
 from modules.P2_UsuariosYAccesos.Models.usuario import Usuario
+from modules.P7_GestionSaaSySuscripciones.CU03_AsociarUsuariosYSucursalesEmpresa.service import (
+    AsociacionesEmpresaService,
+    UsuarioSinEmpresaError,
+    RolNoAutorizadoParaAsociacionError,
+)
 
 from .repository import UsuariosRolesRepository
 from .schemas import (
@@ -29,6 +34,10 @@ class RolNoAsignableError(Exception):
     grupo "sucursal" y grupo "proveedor" (requeriría re-vincular la cuenta)."""
 
 
+class EmpresaNoAsignableError(Exception):
+    """Usuario de negocio sin empresa asignada. Solo SUPERADMIN puede estar sin empresa."""
+
+
 class SucursalNoEncontradaError(Exception):
     """La sucursal indicada no existe."""
 
@@ -45,14 +54,23 @@ class OperacionNoPermitidaError(Exception):
     """Auto-desactivación bloqueada."""
 
 
+class UsuarioNoEliminableError(Exception):
+    """Auto-eliminación bloqueada o usuario no se puede eliminar."""
+
+
 class UsuariosRolesService:
     def __init__(self, db: Session):
+        self._db = db
         self._repo = UsuariosRolesRepository(db)
 
     def listar(
-        self, search: str | None, rol: RolUsuario | None, is_active: bool | None
+        self,
+        search: str | None,
+        rol: RolUsuario | None,
+        is_active: bool | None,
+        current_user: Usuario | None = None,
     ) -> list[Usuario]:
-        return self._repo.listar(search=search, rol=rol, is_active=is_active)
+        return self._repo.listar(search=search, rol=rol, is_active=is_active, current_user=current_user)
 
     def obtener(self, usuario_id: int) -> Usuario:
         usuario = self._repo.get_by_id(usuario_id)
@@ -63,7 +81,7 @@ class UsuariosRolesService:
             raise UsuarioNoEncontradoError
         return usuario
 
-    def crear(self, datos: UsuarioCrear) -> Usuario:
+    def crear(self, datos: UsuarioCrear, current_user: Usuario | None = None) -> Usuario:
         if datos.rol not in ROLES_INTERNOS:
             raise RolNoAsignableError
 
@@ -81,6 +99,18 @@ class UsuariosRolesService:
         if self._repo.get_by_correo(datos.correo) is not None:
             raise CorreoDuplicadoError
 
+        # CU03: Asociar usuario a empresa
+        # Regla de negocio: todos los roles de negocio DEBEN pertenecer a una empresa.
+        # Solo SUPERADMIN puede estar sin empresa (pero SUPERADMIN no se crea desde CU05).
+        # Si hay current_user ADMINISTRADOR, asignar su empresa al nuevo usuario (CU03).
+        empresa_id = None
+        if current_user is not None and current_user.rol == RolUsuario.ADMINISTRADOR:
+            try:
+                cu03_service = AsociacionesEmpresaService(self._db)
+                empresa_id = cu03_service.obtener_empresa_id_del_actor(current_user)
+            except (RolNoAutorizadoParaAsociacionError, UsuarioSinEmpresaError):
+                empresa_id = None
+
         usuario = Usuario(
             nombre=datos.nombre.strip(),
             correo=datos.correo.strip().lower(),
@@ -89,6 +119,7 @@ class UsuariosRolesService:
             is_active=datos.is_active,
             sucursal_id=datos.sucursal_id,
             proveedor_id=datos.proveedor_id,
+            empresa_id=empresa_id,
         )
         return self._repo.crear(usuario)
 
@@ -140,3 +171,11 @@ class UsuariosRolesService:
 
         usuario.is_active = activo
         return self._repo.guardar(usuario)
+
+    def eliminar(self, usuario_id: int, actor: Usuario) -> None:
+        usuario = self.obtener(usuario_id)
+
+        if usuario.id == actor.id:
+            raise UsuarioNoEliminableError
+
+        self._repo.eliminar(usuario)

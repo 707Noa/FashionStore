@@ -8,10 +8,21 @@
     <div class="state-block state-block--error">
       <span class="state-block__title">Prenda no encontrada</span>
       <span>Puede que ya no esté disponible.</span>
-      <a routerLink="/catalogo" class="btn btn--ghost btn--sm">Volver al catálogo</a>
+      <a routerLink="/home/catalogo" class="btn btn--ghost btn--sm">Volver al catálogo</a>
     </div>
   } @else {
-    <a routerLink="/catalogo" class="back-link">
+    @if (isOffline()) {
+      <div [ngStyle]="{ background: '#fff3cd', border: '1px solid #ffc107', padding: '8px', marginBottom: '12px', color: '#856404', fontSize: '12px' }">
+        <span>⚠️ Sin conexión — mostrando información local</span>
+        @if (fechaUltimaActualizacion()) {
+          <span [ngStyle]="{ fontSize: '10px', opacity: 0.8, marginLeft: '8px' }">
+            Actualizado: {{ fechaUltimaActualizacion() | date : 'dd/MM/yyyy HH:mm' }}
+          </span>
+        }
+      </div>
+    }
+
+    <a routerLink="/home/catalogo" class="back-link">
       <app-icon name="arrow-right" style="width: 13px; height: 13px; transform: rotate(180deg)" />
       Volver al catálogo
     </a>
@@ -31,7 +42,7 @@
                 (click)="seleccionarImagen(url)"
               >
                 @if (!erroredUrls().has(url)) {
-                  <img [src]="resolveMediaUrl(url)" alt="" (error)="marcarImagenRota(url)" />
+                  <img [src]="(url | offlineMedia | async) || resolveMediaUrl(url)" alt="" (error)="marcarImagenRota(url)" />
                 } @else {
                   <div class="gallery__thumb-placeholder">
                     <app-icon name="products" style="width: 16px; height: 16px" />
@@ -44,7 +55,7 @@
         <div class="gallery__main">
           @if (imagenActivaUrl() && !erroredUrls().has(imagenActivaUrl()!)) {
             <img
-              [src]="resolveMediaUrl(imagenActivaUrl())"
+              [src]="(imagenActivaUrl() | offlineMedia | async) || resolveMediaUrl(imagenActivaUrl())"
               [alt]="producto()!.nombre"
               (error)="marcarImagenRota(imagenActivaUrl()!)"
             />

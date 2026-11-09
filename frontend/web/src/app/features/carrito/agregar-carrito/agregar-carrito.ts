@@ -93,6 +93,10 @@ export class AgregarCarrito {
 
   private _agregar(varianteId: number, esAutomatico: boolean): void {
     this.submitting.set(true);
+    this._agregarOnline(varianteId, esAutomatico);
+  }
+
+  private _agregarOnline(varianteId: number, esAutomatico: boolean): void {
     this.service.agregarItem({ producto_variante_id: varianteId }).subscribe({
       next: () => {
         this.submitting.set(false);

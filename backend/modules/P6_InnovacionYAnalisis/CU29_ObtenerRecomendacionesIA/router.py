@@ -17,7 +17,7 @@ amigable -- nunca un 500 con detalle interno ni un stack trace.
 
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_usuario_opcional

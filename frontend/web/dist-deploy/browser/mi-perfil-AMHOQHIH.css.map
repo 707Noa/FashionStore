@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/proveedor/mi-perfil/mi-perfil.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\n.form-page__body {\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 18px;\r\n  max-width: 560px;\r\n  margin-top: 18px;\r\n}\r\n\r\n.form-page__footer {\r\n  display: flex;\r\n  justify-content: flex-end;\r\n  margin-top: 6px;\r\n}\r\n\r\n@media (max-width: 480px) {\r\n  .field-row {\r\n    flex-direction: column;\r\n    gap: 18px;\r\n  }\r\n\r\n  .form-page__footer {\r\n    .btn {\r\n      width: 100%;\r\n      justify-content: center;\r\n    }\r\n  }\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAGF,CAAA;AACE,WAAA;AACA,kBAAA;AACA,OAAA;AACA,aAAA;AACA,cAAA;;AAGF,CAAA;AACE,WAAA;AACA,mBAAA;AACA,cAAA;;AAGF,QAAA,WAAA;AACE,GAAA;AACE,oBAAA;AACA,SAAA;;AAIA,GAbJ,kBAaI,CAAA;AACE,WAAA;AACA,qBAAA;;;",
+  "names": []
+}

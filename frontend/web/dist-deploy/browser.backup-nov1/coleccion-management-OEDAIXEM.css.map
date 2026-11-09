@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/sucursales-catalogo/cu10-gestionar-temporadas-colecciones/coleccion-management/coleccion-management.scss"],
+  "sourcesContent": [":host {\r\n  display: block;\r\n}\r\n\r\n.badge--featured {\r\n  margin-left: 8px;\r\n  background: color-mix(in srgb, var(--color-primary) 12%, white);\r\n  color: var(--color-primary-dark);\r\n}\r\n"],
+  "mappings": ";AAAA;AACE,WAAA;;AAGF,CAAA;AACE,eAAA;AACA,cAAA,UAAA,GAAA,IAAA,EAAA,IAAA,iBAAA,GAAA,EAAA;AACA,SAAA,IAAA;;",
+  "names": []
+}

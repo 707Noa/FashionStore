@@ -7,9 +7,10 @@ para que Flutter pueda consumirla igual más adelante.
 """
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.deps import require_roles
+from app.core.deps import get_current_usuario_opcional, require_roles
 from app.core.image_storage import MAX_TAMANO_BYTES, ImagenDemasiadoGrandeError, ImagenInvalidaError
 from app.db.session import get_db
 from modules.P1_SucursalesYCatalogos.Models.coleccion import Coleccion
@@ -59,17 +60,17 @@ def listar_temporadas(
     search: str | None = Query(default=None),
     estado: str | None = Query(default=None, pattern="^(active|inactive)$"),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> list[TemporadaOut]:
-    return TemporadasService(db).listar(search=search, is_active=_estado_a_bool(estado))
+    return TemporadasService(db).listar(search=search, is_active=_estado_a_bool(estado), empresa_id=current_user.empresa_id)
 
 
 @router_temporadas.post("", response_model=TemporadaOut, status_code=status.HTTP_201_CREATED)
 def crear_temporada(
-    payload: TemporadaCrear, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    payload: TemporadaCrear, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> TemporadaOut:
     try:
-        return TemporadasService(db).crear(payload)
+        return TemporadasService(db).crear(payload, current_user.empresa_id)
     except NombreDuplicadoError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una temporada con ese nombre.") from exc
 
@@ -79,10 +80,10 @@ def actualizar_temporada(
     temporada_id: int,
     payload: TemporadaActualizar,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> TemporadaOut:
     try:
-        return TemporadasService(db).actualizar(temporada_id, payload)
+        return TemporadasService(db).actualizar(temporada_id, payload, current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Temporada no encontrada.") from exc
     except NombreDuplicadoError as exc:
@@ -94,12 +95,28 @@ def cambiar_estado_temporada(
     temporada_id: int,
     payload: CambiarEstadoRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> TemporadaOut:
     try:
-        return TemporadasService(db).cambiar_estado(temporada_id, payload.is_active)
+        return TemporadasService(db).cambiar_estado(temporada_id, payload.is_active, current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Temporada no encontrada.") from exc
+
+
+@router_temporadas.delete("/{temporada_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_temporada(
+    temporada_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
+) -> None:
+    try:
+        TemporadasService(db).eliminar(temporada_id, current_user.empresa_id)
+    except RegistroNoEncontradoError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Temporada no encontrada.") from exc
+    except IntegrityError as exc:
+        # PostgreSQL rechaza eliminación si existen colecciones asociadas a esta temporada
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "No se puede eliminar esta temporada porque existen colecciones asociadas.",
+        ) from exc
 
 
 # --------------------------------------------------------------------------
@@ -113,19 +130,19 @@ def listar_colecciones(
     temporada_id: int | None = Query(default=None),
     estado: str | None = Query(default=None, pattern="^(active|inactive)$"),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> list[ColeccionOut]:
     return ColeccionesService(db).listar(
-        search=search, temporada_id=temporada_id, is_active=_estado_a_bool(estado)
+        search=search, temporada_id=temporada_id, is_active=_estado_a_bool(estado), empresa_id=current_user.empresa_id
     )
 
 
 @router_colecciones.post("", response_model=ColeccionOut, status_code=status.HTTP_201_CREATED)
 def crear_coleccion(
-    payload: ColeccionCrear, db: Session = Depends(get_db), _: Usuario = Depends(require_admin)
+    payload: ColeccionCrear, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
 ) -> ColeccionOut:
     try:
-        return ColeccionesService(db).crear(payload)
+        return ColeccionesService(db).crear(payload, current_user.empresa_id)
     except TemporadaNoEncontradaError as exc:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "La temporada indicada no existe."
@@ -141,10 +158,10 @@ def actualizar_coleccion(
     coleccion_id: int,
     payload: ColeccionActualizar,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ColeccionOut:
     try:
-        return ColeccionesService(db).actualizar(coleccion_id, payload)
+        return ColeccionesService(db).actualizar(coleccion_id, payload, current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
     except TemporadaNoEncontradaError as exc:
@@ -162,12 +179,28 @@ def cambiar_estado_coleccion(
     coleccion_id: int,
     payload: CambiarEstadoRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ColeccionOut:
     try:
-        return ColeccionesService(db).cambiar_estado(coleccion_id, payload.is_active)
+        return ColeccionesService(db).cambiar_estado(coleccion_id, payload.is_active, current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
+
+
+@router_colecciones.delete("/{coleccion_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_coleccion(
+    coleccion_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(require_admin)
+) -> None:
+    try:
+        ColeccionesService(db).eliminar(coleccion_id, current_user.empresa_id)
+    except RegistroNoEncontradoError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
+    except IntegrityError as exc:
+        # PostgreSQL rechaza eliminación si existen productos asociados a esta colección
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "No se puede eliminar esta colección porque existen productos asociados.",
+        ) from exc
 
 
 @router_colecciones.patch("/{coleccion_id}/destacada-inicio", response_model=ColeccionOut)
@@ -175,14 +208,14 @@ def establecer_destacada_inicio(
     coleccion_id: int,
     payload: ColeccionDestacadaRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ColeccionOut:
     """Marca/desmarca esta colección como la destacada del Home. Al marcar
     una, el servicio desmarca automáticamente cualquier otra -- nunca hay
     más de una a la vez (ver también el índice único parcial en la BD)."""
     try:
         return ColeccionesService(db).establecer_destacada_inicio(
-            coleccion_id, payload.es_destacada_inicio
+            coleccion_id, payload.es_destacada_inicio, current_user.empresa_id
         )
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
@@ -193,11 +226,11 @@ async def establecer_imagen_destacada_coleccion(
     coleccion_id: int,
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
+    current_user: Usuario = Depends(require_admin),
 ) -> ColeccionOut:
     contenido = await archivo.read()
     try:
-        return ColeccionesService(db).establecer_imagen_destacada(coleccion_id, archivo, contenido)
+        return ColeccionesService(db).establecer_imagen_destacada(coleccion_id, archivo, contenido, current_user.empresa_id)
     except RegistroNoEncontradoError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Colección no encontrada.") from exc
     except ImagenInvalidaError as exc:
@@ -220,5 +253,10 @@ async def establecer_imagen_destacada_coleccion(
 
 
 @router_colecciones.get("/destacada", response_model=ColeccionDestacadaPublicaOut | None)
-def obtener_coleccion_destacada(db: Session = Depends(get_db)) -> Coleccion | None:
-    return ColeccionesService(db).obtener_destacada_publica()
+def obtener_coleccion_destacada(
+    usuario: Usuario | None = Depends(get_current_usuario_opcional),
+    db: Session = Depends(get_db)
+) -> Coleccion | None:
+    if usuario is None:
+        return None
+    return ColeccionesService(db).obtener_destacada_publica(empresa_id=usuario.empresa_id)

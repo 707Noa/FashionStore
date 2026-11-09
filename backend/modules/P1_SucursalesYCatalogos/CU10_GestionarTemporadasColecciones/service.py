@@ -27,20 +27,23 @@ class TemporadasService:
     def __init__(self, db: Session):
         self._repo = TemporadasRepository(db)
 
-    def listar(self, search: str | None, is_active: bool | None) -> list[Temporada]:
-        return self._repo.listar(search=search, is_active=is_active)
+    def listar(self, search: str | None, is_active: bool | None, empresa_id: int) -> list[Temporada]:
+        return self._repo.listar(search=search, is_active=is_active, empresa_id=empresa_id)
 
-    def obtener(self, temporada_id: int) -> Temporada:
+    def obtener(self, temporada_id: int, empresa_id: int | None = None) -> Temporada:
         temporada = self._repo.get_by_id(temporada_id)
         if temporada is None:
             raise RegistroNoEncontradoError
+        if empresa_id is not None and temporada.empresa_id != empresa_id:
+            raise RegistroNoEncontradoError
         return temporada
 
-    def crear(self, datos: TemporadaCrear) -> Temporada:
-        if self._repo.existe_nombre(datos.nombre):
+    def crear(self, datos: TemporadaCrear, empresa_id: int) -> Temporada:
+        if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id):
             raise NombreDuplicadoError
         return self._repo.crear(
             Temporada(
+                empresa_id=empresa_id,
                 nombre=datos.nombre,
                 fecha_inicio=datos.fecha_inicio,
                 fecha_fin=datos.fecha_fin,
@@ -48,19 +51,23 @@ class TemporadasService:
             )
         )
 
-    def actualizar(self, temporada_id: int, datos: TemporadaActualizar) -> Temporada:
-        temporada = self.obtener(temporada_id)
-        if self._repo.existe_nombre(datos.nombre, excluyendo_id=temporada.id):
+    def actualizar(self, temporada_id: int, datos: TemporadaActualizar, empresa_id: int) -> Temporada:
+        temporada = self.obtener(temporada_id, empresa_id=empresa_id)
+        if self._repo.existe_nombre(datos.nombre, empresa_id=empresa_id, excluyendo_id=temporada.id):
             raise NombreDuplicadoError
         temporada.nombre = datos.nombre
         temporada.fecha_inicio = datos.fecha_inicio
         temporada.fecha_fin = datos.fecha_fin
         return self._repo.guardar(temporada)
 
-    def cambiar_estado(self, temporada_id: int, activo: bool) -> Temporada:
-        temporada = self.obtener(temporada_id)
+    def cambiar_estado(self, temporada_id: int, activo: bool, empresa_id: int) -> Temporada:
+        temporada = self.obtener(temporada_id, empresa_id)
         temporada.is_active = activo
         return self._repo.guardar(temporada)
+
+    def eliminar(self, temporada_id: int, empresa_id: int) -> None:
+        temporada = self.obtener(temporada_id, empresa_id)
+        self._repo.eliminar(temporada)
 
 
 class ColeccionesService:
@@ -69,24 +76,25 @@ class ColeccionesService:
         self._temporadas = TemporadasRepository(db)
 
     def listar(
-        self, search: str | None, temporada_id: int | None, is_active: bool | None
+        self, search: str | None, temporada_id: int | None, is_active: bool | None, empresa_id: int
     ) -> list[Coleccion]:
-        return self._repo.listar(search=search, temporada_id=temporada_id, is_active=is_active)
+        return self._repo.listar(search=search, temporada_id=temporada_id, is_active=is_active, empresa_id=empresa_id)
 
-    def obtener(self, coleccion_id: int) -> Coleccion:
-        coleccion = self._repo.get_by_id(coleccion_id)
+    def obtener(self, coleccion_id: int, empresa_id: int | None = None) -> Coleccion:
+        coleccion = self._repo.get_by_id(coleccion_id, empresa_id=empresa_id)
         if coleccion is None:
             raise RegistroNoEncontradoError
         return coleccion
 
-    def crear(self, datos: ColeccionCrear) -> Coleccion:
+    def crear(self, datos: ColeccionCrear, empresa_id: int) -> Coleccion:
         if self._temporadas.get_by_id(datos.temporada_id) is None:
             raise TemporadaNoEncontradaError
 
-        if self._repo.existe_nombre_en_temporada(datos.nombre, datos.temporada_id):
+        if self._repo.existe_nombre_en_temporada(datos.nombre, datos.temporada_id, empresa_id):
             raise NombreDuplicadoError
 
         coleccion = Coleccion(
+            empresa_id=empresa_id,
             nombre=datos.nombre,
             temporada_id=datos.temporada_id,
             descripcion=datos.descripcion,
@@ -94,14 +102,14 @@ class ColeccionesService:
         )
         return self._repo.crear(coleccion)
 
-    def actualizar(self, coleccion_id: int, datos: ColeccionActualizar) -> Coleccion:
-        coleccion = self.obtener(coleccion_id)
+    def actualizar(self, coleccion_id: int, datos: ColeccionActualizar, empresa_id: int) -> Coleccion:
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
 
         if self._temporadas.get_by_id(datos.temporada_id) is None:
             raise TemporadaNoEncontradaError
 
         if self._repo.existe_nombre_en_temporada(
-            datos.nombre, datos.temporada_id, excluyendo_id=coleccion.id
+            datos.nombre, datos.temporada_id, empresa_id, excluyendo_id=coleccion.id
         ):
             raise NombreDuplicadoError
 
@@ -110,27 +118,31 @@ class ColeccionesService:
         coleccion.descripcion = datos.descripcion
         return self._repo.guardar(coleccion)
 
-    def cambiar_estado(self, coleccion_id: int, activo: bool) -> Coleccion:
-        coleccion = self.obtener(coleccion_id)
+    def cambiar_estado(self, coleccion_id: int, activo: bool, empresa_id: int) -> Coleccion:
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
         coleccion.is_active = activo
         return self._repo.guardar(coleccion)
 
-    def establecer_destacada_inicio(self, coleccion_id: int, destacada: bool) -> Coleccion:
-        coleccion = self.obtener(coleccion_id)
+    def establecer_destacada_inicio(self, coleccion_id: int, destacada: bool, empresa_id: int) -> Coleccion:
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
         if destacada:
-            self._repo.desmarcar_destacadas(excluyendo_id=coleccion_id)
+            self._repo.desmarcar_destacadas(excluyendo_id=coleccion_id, empresa_id=empresa_id)
         coleccion.es_destacada_inicio = destacada
         return self._repo.guardar(coleccion)
 
     def establecer_imagen_destacada(
-        self, coleccion_id: int, archivo: UploadFile, contenido: bytes
+        self, coleccion_id: int, archivo: UploadFile, contenido: bytes, empresa_id: int
     ) -> Coleccion:
-        coleccion = self.obtener(coleccion_id)
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
         url_anterior = coleccion.imagen_destacada_url
         coleccion.imagen_destacada_url = guardar_archivo_imagen("colecciones", archivo, contenido)
         coleccion = self._repo.guardar(coleccion)
         eliminar_archivo_imagen(url_anterior)
         return coleccion
 
-    def obtener_destacada_publica(self) -> Coleccion | None:
-        return self._repo.obtener_destacada_activa()
+    def obtener_destacada_publica(self, empresa_id: int | None = None) -> Coleccion | None:
+        return self._repo.obtener_destacada_activa(empresa_id=empresa_id)
+
+    def eliminar(self, coleccion_id: int, empresa_id: int) -> None:
+        coleccion = self.obtener(coleccion_id, empresa_id=empresa_id)
+        self._repo.eliminar(coleccion)

@@ -28,8 +28,9 @@ services:
 
   frontend:
     build: ./frontend/web
-    ports:
-      - "${FRONTEND_PORT:-4200}:80"
+    # ports:
+    #   - "${FRONTEND_PORT:-4200}:80"
+    # Frontend ahora se sirve localmente en http://localhost:4200 con serve-prod.py
     depends_on:
       - backend
     restart: unless-stopped

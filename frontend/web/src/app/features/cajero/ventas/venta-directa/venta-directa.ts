@@ -3,6 +3,9 @@ import { Router } from '@angular/router';
 import { Icon } from '../../../../core/ui/icon/icon';
 import { ToastService } from '../../../../core/ui/toast/toast.service';
 import { resolveMediaUrl } from '../../../../core/utils/resolve-media-url';
+import { OfflineStorageService } from '../../../../core/services/offline-storage.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { ConnectivityService } from '../../../../core/services/connectivity.service';
 import { ProcesarPago } from '../procesar-pago/procesar-pago';
 import { VentaResumen } from '../venta-resumen/venta-resumen';
 import { ProductoBusquedaOut, ProductoResumen, VarianteResumen, VentaPresencialOut } from '../venta-presencial.model';
@@ -63,6 +66,9 @@ export class VentaDirecta {
   private readonly service = inject(VentaPresencialService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly offlineStorage = inject(OfflineStorageService);
+  private readonly auth = inject(AuthService);
+  private readonly connectivity = inject(ConnectivityService);
 
   protected readonly resolveMediaUrl = resolveMediaUrl;
 
@@ -133,8 +139,8 @@ export class VentaDirecta {
     ]);
   }
 
-  incrementar(linea: LineaVenta): void {
-    this._incrementarPorId(linea.producto_variante_id);
+  async incrementar(linea: LineaVenta): Promise<void> {
+    await this._incrementarPorId(linea.producto_variante_id);
   }
 
   decrementar(linea: LineaVenta): void {
@@ -200,17 +206,43 @@ export class VentaDirecta {
     this.seBusco.set(false);
   }
 
-  private _incrementarPorId(varianteId: number): void {
+  private async _incrementarPorId(varianteId: number): Promise<void> {
     const linea = this.lineas().find((l) => l.producto_variante_id === varianteId);
     if (!linea) {
       return;
     }
-    if (linea.cantidad >= linea.disponible) {
-      this.toast.error('No hay más disponibilidad para esa prenda.');
+
+    // CU9 STOCK CONTROL — Consultar disponible actual considerando ventas offline
+    let disponibleActual = linea.disponible;
+
+    const isOnline = this.connectivity.isOnline();
+    if (!isOnline) {
+      const usuario = this.auth.usuario();
+      const empresaId = usuario?.empresa_id || 1;
+
+      try {
+        const preparaciones = await this.offlineStorage.getAllPreparaciones(empresaId);
+        const sucursalId = preparaciones?.[0]?.metadata?.sucursal_id || 1;
+
+        disponibleActual = await this.offlineStorage.obtenerStockDisponibleLocal(
+          empresaId,
+          sucursalId,
+          varianteId,
+        );
+      } catch (error) {
+        console.error('[CU9 INCREMENT] Error al obtener stock local:', error);
+        this.toast.error('Error al verificar disponibilidad. Inténtalo nuevamente.');
+        return;
+      }
+    }
+
+    if (linea.cantidad >= disponibleActual) {
+      this.toast.error(`No hay más disponibilidad para esa prenda. Disponible: ${disponibleActual}`);
       return;
     }
+
     this.lineas.update((lineas) =>
-      lineas.map((l) => (l.producto_variante_id === varianteId ? { ...l, cantidad: l.cantidad + 1 } : l)),
+      lineas.map((l) => (l.producto_variante_id === varianteId ? { ...l, cantidad: l.cantidad + 1, disponible: disponibleActual } : l)),
     );
   }
 }

@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/features/encargado/shared/panel-encargado.service.ts"
+  ],
+  "sourcesContent": [
+    "import { HttpClient, HttpParams } from '@angular/common/http';\r\nimport { Injectable, inject } from '@angular/core';\r\nimport { Observable } from 'rxjs';\r\nimport { environment } from '../../../../environments/environment';\r\nimport { ProductoInventario, SucursalDelEncargado } from './panel-encargado.model';\r\n\r\n@Injectable({ providedIn: 'root' })\r\nexport class PanelEncargadoService {\r\n  private readonly http = inject(HttpClient);\r\n  private readonly baseUrl = `${environment.apiUrl}/stock-sucursal/panel`;\r\n\r\n  miSucursal(): Observable<SucursalDelEncargado> {\r\n    return this.http.get<SucursalDelEncargado>(`${this.baseUrl}/mi-sucursal`);\r\n  }\r\n\r\n  listarInventario(search?: string): Observable<ProductoInventario[]> {\r\n    let params = new HttpParams();\r\n    if (search) {\r\n      params = params.set('search', search);\r\n    }\r\n    return this.http.get<ProductoInventario[]>(`${this.baseUrl}/productos`, { params });\r\n  }\r\n}\r\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;;AAOM,IAAO,wBAAP,MAAO,uBAAqB;EACf,OAAO,OAAO,UAAU;EACxB,UAAU,GAAG,YAAY,MAAM;EAEhD,aAA8C;AAC5C,WAAO,KAAK,KAAK,IAA0B,GAAG,KAAK,OAAO,cAAc;EAC1E;EAEA,iBAAiB,QAAkD;AACjE,QAAI,SAAS,IAAI,WAAU;AAC3B,QAAI,QAAQ;AACV,eAAS,OAAO,IAAI,UAAU,MAAM;IACtC;AACA,WAAO,KAAK,KAAK,IAA0B,GAAG,KAAK,OAAO,cAAc,EAAE,OAAM,CAAE;EACpF;;qCAdW,wBAAqB;EAAA;4EAArB,wBAAqB,SAArB,uBAAqB,WAAA,YADR,OAAM,CAAA;;;sEACnB,uBAAqB,CAAA;UADjC;WAAW,EAAE,YAAY,OAAM,CAAE;;;",
+  "names": [],
+  "debugId": "8c30c30e-14c8-51f5-bf14-533529c51430"
+}

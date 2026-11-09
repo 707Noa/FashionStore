@@ -6,6 +6,8 @@ import { EstadoReserva, ReservaDetalleOut, ReservaOut } from '../crear-reserva/c
 import { etiquetaEstadoReserva } from '../estado-reserva';
 import { formatearFechaReserva, formatearHorarioReserva } from '../reserva-formato';
 import { MisReservasService } from './mis-reservas.service';
+import { ConnectivityService } from '../../../core/services/connectivity.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 // Tabs de CU18 -- una reserva vive en una sola pestaña a la vez, nunca
 // mezcladas: Pendientes es la que abre por defecto (no hay pestaña "Todas",
@@ -72,10 +74,12 @@ const TABS: TabReserva[] = [
 })
 export class MisReservas implements OnInit {
   private readonly service = inject(MisReservasService);
+  private readonly connectivity = inject(ConnectivityService);
+  private readonly auth = inject(AuthService);
 
   protected readonly cargando = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly reservas = signal<ReservaOut[]>([]);
+  protected readonly reservas = signal<any[]>([]);
 
   protected readonly resolveMediaUrl = resolveMediaUrl;
   protected readonly etiquetaEstadoReserva = etiquetaEstadoReserva;
@@ -106,16 +110,38 @@ export class MisReservas implements OnInit {
   cargar(): void {
     this.cargando.set(true);
     this.errorMessage.set(null);
-    this.service.listarMias().subscribe({
-      next: (reservas) => {
-        this.reservas.set(reservas);
-        this.cargando.set(false);
-      },
-      error: () => {
-        this.cargando.set(false);
-        this.errorMessage.set('No se pudieron cargar tus reservas. Inténtalo nuevamente.');
-      },
-    });
+
+    const isOnline = this.connectivity.isOnline();
+    const usuario = this.auth.usuario();
+
+    if (!isOnline && usuario) {
+      // CU18 — Offline: cargar desde IndexedDB
+      const empresaId = usuario.empresa_id || 0;
+      const clienteId = usuario.id || 0;
+
+      this.service.listarMiasOffline(empresaId, clienteId).subscribe({
+        next: (reservas) => {
+          this.reservas.set(reservas);
+          this.cargando.set(false);
+        },
+        error: () => {
+          this.cargando.set(false);
+          this.errorMessage.set('No se pudieron cargar tus reservas locales. Inténtalo nuevamente.');
+        },
+      });
+    } else {
+      // CU18 — Online: cargar desde backend
+      this.service.listarMias().subscribe({
+        next: (reservas) => {
+          this.reservas.set(reservas);
+          this.cargando.set(false);
+        },
+        error: () => {
+          this.cargando.set(false);
+          this.errorMessage.set('No se pudieron cargar tus reservas. Inténtalo nuevamente.');
+        },
+      });
+    }
   }
 
   protected horario(reserva: ReservaOut): string {
@@ -150,7 +176,7 @@ export class MisReservas implements OnInit {
           ? reserva
           : {
               ...reserva,
-              detalles: reserva.detalles.map((detalle) =>
+              detalles: reserva.detalles.map((detalle: any) =>
                 detalle.id === detalleActualizado.id ? detalleActualizado : detalle,
               ),
             },

@@ -7,12 +7,13 @@ import { RolUsuario } from '../../usuarios-y-accesos/shared/models/usuario.model
 // PROPIO panel en vez de a '/' -- ver core/pages/no-autorizado/no-autorizado.ts.
 //
 // Es un Record<RolUsuario, string>, no un if/else: el compilador exige que
-// los 5 roles estén cubiertos. Antes, un if/else incompleto en login.ts no
+// los 6 roles estén cubiertos. Antes, un if/else incompleto en login.ts no
 // contemplaba CAJERO y caía en un `destino = '/'` por defecto -- CAJERO
 // terminaba en el área pública, indistinguible de un Cliente. Con este mapa,
 // agregar un rol nuevo sin registrar su ruta aquí es un error de
 // compilación, no un olvido que se note recién en producción.
 export const RUTA_POR_ROL: Record<RolUsuario, string> = {
+  SUPERADMIN: '/superadmin',
   ADMINISTRADOR: '/admin',
   ENCARGADO_SUCURSAL: '/encargado',
   PROVEEDOR: '/proveedor',
@@ -22,5 +23,5 @@ export const RUTA_POR_ROL: Record<RolUsuario, string> = {
   // Cliente). Todavía no es un panel completo -- CU24 (Registrar venta) y
   // CU25 (Procesar pago) son quienes lo necesitarían, fuera de alcance.
   CAJERO: '/cajero',
-  CLIENTE: '/',
+  CLIENTE: '/home',
 };

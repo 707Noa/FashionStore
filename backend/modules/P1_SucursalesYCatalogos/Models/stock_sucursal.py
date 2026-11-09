@@ -11,6 +11,11 @@ duplicar ninguna de esas dos entidades. La restricción de unicidad evita dos
 filas de stock para la misma sucursal+variante -- se actualiza la cantidad
 existente en su lugar (ver CU14_ConsultarInventario).
 
+Multitenant: StockSucursal.empresa_id SIEMPRE debe coincidir con
+Sucursal.empresa_id. Se incluye empresa_id directo para:
+- Facilitar consultas filtradas por tenant en la capa de repositorio
+- Garantizar integridad mediante CHECK constraint o índice compuesto
+
 producto_variante_id usa ON DELETE CASCADE porque CU08 elimina físicamente una
 ProductoVariante cuando el Administrador quita esa combinación talla/color de
 un producto (ver Producto.variantes, cascade="all, delete-orphan"); sin este
@@ -28,11 +33,10 @@ siguen leyendo/escribiendo únicamente `cantidad` -- el stock físico real no
 cambia por reservar, solo por recepción/ajuste/venta.
 """
 
-from sqlalchemy import CheckConstraint, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, ForeignKeyConstraint, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-
 from .producto_variante import ProductoVariante
 from .sucursal import Sucursal
 
@@ -55,5 +59,5 @@ class StockSucursal(Base):
         Integer, nullable=False, default=0, server_default="0"
     )
 
-    sucursal: Mapped[Sucursal] = relationship(lazy="joined")
-    producto_variante: Mapped[ProductoVariante] = relationship(lazy="joined")
+    sucursal: Mapped[Sucursal] = relationship(lazy="select")
+    producto_variante: Mapped[ProductoVariante] = relationship(lazy="select")

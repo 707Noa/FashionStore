@@ -44,6 +44,10 @@ from .schemas import (
     VentasReporteOut,
 )
 from .service import RangoFechaInvalidoError, ReportesService, SucursalInvalidaError
+from modules.P7_GestionSaaSySuscripciones.CU05_GestionarSuscripcionEmpresa.service import (
+    CapacidadesEmpresa,
+    FuncionalidadNoHabilitadaError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +76,7 @@ def obtener_resumen(
     actor: Usuario = Depends(require_administrador),
 ) -> ResumenReporteOut:
     try:
-        return ReportesService(db).resumen(fecha_desde, fecha_hasta, sucursal_id)
+        return ReportesService(db).resumen(fecha_desde, fecha_hasta, sucursal_id, actor.empresa_id)
     except RangoFechaInvalidoError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, _MSG_RANGO_INVALIDO) from exc
     except SucursalInvalidaError as exc:
@@ -88,7 +92,7 @@ def obtener_ventas(
     actor: Usuario = Depends(require_administrador),
 ) -> VentasReporteOut:
     try:
-        return ReportesService(db).ventas(fecha_desde, fecha_hasta, sucursal_id)
+        return ReportesService(db).ventas(fecha_desde, fecha_hasta, sucursal_id, actor.empresa_id)
     except RangoFechaInvalidoError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, _MSG_RANGO_INVALIDO) from exc
     except SucursalInvalidaError as exc:
@@ -102,7 +106,7 @@ def obtener_inventario(
     actor: Usuario = Depends(require_administrador),
 ) -> InventarioReporteOut:
     try:
-        return ReportesService(db).inventario(sucursal_id)
+        return ReportesService(db).inventario(sucursal_id, actor.empresa_id)
     except SucursalInvalidaError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, _MSG_SUCURSAL_INVALIDA) from exc
 
@@ -116,7 +120,7 @@ def obtener_reservas(
     actor: Usuario = Depends(require_administrador),
 ) -> ReservasReporteOut:
     try:
-        return ReportesService(db).reservas(fecha_desde, fecha_hasta, sucursal_id)
+        return ReportesService(db).reservas(fecha_desde, fecha_hasta, sucursal_id, actor.empresa_id)
     except RangoFechaInvalidoError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, _MSG_RANGO_INVALIDO) from exc
     except SucursalInvalidaError as exc:
@@ -132,7 +136,7 @@ def obtener_productos_mas_vendidos(
     actor: Usuario = Depends(require_administrador),
 ) -> ProductosMasVendidosReporteOut:
     try:
-        return ReportesService(db).productos_mas_vendidos(fecha_desde, fecha_hasta, sucursal_id)
+        return ReportesService(db).productos_mas_vendidos(fecha_desde, fecha_hasta, sucursal_id, actor.empresa_id)
     except RangoFechaInvalidoError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, _MSG_RANGO_INVALIDO) from exc
     except SucursalInvalidaError as exc:
@@ -146,7 +150,19 @@ def consulta_inteligente(
     actor: Usuario = Depends(require_administrador),
 ) -> ConsultaInteligenteResponse:
     try:
+        # CU05: Validar que la empresa del usuario tenga acceso a reportes generativos con IA.
+        # Esta validación es obligatoria en backend para proteger la funcionalidad.
+        if actor.empresa_id:
+            capacidades = CapacidadesEmpresa(db, actor.empresa_id)
+            capacidades.validar_acceso_a("reportes_generativos_ia")
+
         return ConsultaInteligenteService(db).consultar(payload)
+    except FuncionalidadNoHabilitadaError as exc:
+        # Si la funcionalidad no está habilitada, rechazar con 403.
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "La funcionalidad de reportes generativos con IA no está disponible en tu plan."
+        ) from exc
     except Exception:
         # Última red de seguridad (ver docstring del módulo) -- ni una
         # excepción inesperada aquí debe tumbar el dashboard base.

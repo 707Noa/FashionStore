@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/features/reservas/reserva-formato.ts"
+  ],
+  "sourcesContent": [
+    "// Formato de fecha/horario de una reserva -- compartido entre CU18 (Mis\r\n// reservas) y CU19 (Cancelar reserva, que muestra el mismo resumen dentro\r\n// del modal de confirmación) para no duplicar el mismo mapeo dos veces.\r\n\r\nexport function formatearFechaReserva(fechaIso: string): string {\r\n  const [anio, mes, dia] = fechaIso.split('-');\r\n  return `${dia}/${mes}/${anio}`;\r\n}\r\n\r\nexport function formatearHorarioReserva(horaInicio: string, horaFin: string): string {\r\n  return `${horaInicio.slice(0, 5)} - ${horaFin.slice(0, 5)}`;\r\n}\r\n"
+  ],
+  "mappings": ";AAIO,SAAS,sBAAsB,UAA0B;AAC9D,QAAM,CAAC,MAAM,KAAK,GAAG,IAAI,SAAS,MAAM,GAAG;AAC3C,SAAO,GAAG,GAAG,IAAI,GAAG,IAAI,IAAI;AAC9B;AAEO,SAAS,wBAAwB,YAAoB,SAAyB;AACnF,SAAO,GAAG,WAAW,MAAM,GAAG,CAAC,CAAC,MAAM,QAAQ,MAAM,GAAG,CAAC,CAAC;AAC3D;",
+  "names": [],
+  "debugId": "291fcaf4-7fac-5b59-b8b3-518847a009a4"
+}

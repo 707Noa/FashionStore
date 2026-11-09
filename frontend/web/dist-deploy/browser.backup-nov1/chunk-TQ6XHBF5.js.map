@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/core/ui/toast/toast.service.ts"
+  ],
+  "sourcesContent": [
+    "import { Injectable, signal } from '@angular/core';\r\n\r\n// \"brand\" es una confirmación positiva igual que \"success\" (mismo ícono de\r\n// check, mismo mecanismo), pero con el acento rojo de FashionStore en vez de\r\n// verde -- para casos como CU17 (crear reserva) donde el verde genérico no\r\n// es la identidad visual esperada. No reemplaza a \"success\": los demás CU\r\n// (CU14/15/16, etc.) siguen usándolo tal cual, sin cambios.\r\nexport type ToastType = 'success' | 'error' | 'info' | 'brand';\r\n\r\nexport interface ToastMessage {\r\n  id: number;\r\n  type: ToastType;\r\n  text: string;\r\n}\r\n\r\nconst AUTO_DISMISS_MS = 4000;\r\n\r\n@Injectable({ providedIn: 'root' })\r\nexport class ToastService {\r\n  private readonly _toasts = signal<ToastMessage[]>([]);\r\n  readonly toasts = this._toasts.asReadonly();\r\n\r\n  private nextId = 0;\r\n\r\n  success(text: string): void {\r\n    this.push('success', text);\r\n  }\r\n\r\n  brand(text: string): void {\r\n    this.push('brand', text);\r\n  }\r\n\r\n  error(text: string): void {\r\n    this.push('error', text);\r\n  }\r\n\r\n  info(text: string): void {\r\n    this.push('info', text);\r\n  }\r\n\r\n  dismiss(id: number): void {\r\n    this._toasts.update((list) => list.filter((toast) => toast.id !== id));\r\n  }\r\n\r\n  private push(type: ToastType, text: string): void {\r\n    const id = ++this.nextId;\r\n    this._toasts.update((list) => [...list, { id, type, text }]);\r\n    setTimeout(() => this.dismiss(id), AUTO_DISMISS_MS);\r\n  }\r\n}\r\n"
+  ],
+  "mappings": ";;;;;;;;AAeA,IAAM,kBAAkB;AAGlB,IAAO,eAAP,MAAO,cAAY;EACN,UAAU;IAAuB,CAAA;;;;;;EACzC,SAAS,KAAK,QAAQ,WAAU;EAEjC,SAAS;EAEjB,QAAQ,MAAmB;AACzB,SAAK,KAAK,WAAW,IAAI;EAC3B;EAEA,MAAM,MAAmB;AACvB,SAAK,KAAK,SAAS,IAAI;EACzB;EAEA,MAAM,MAAmB;AACvB,SAAK,KAAK,SAAS,IAAI;EACzB;EAEA,KAAK,MAAmB;AACtB,SAAK,KAAK,QAAQ,IAAI;EACxB;EAEA,QAAQ,IAAiB;AACvB,SAAK,QAAQ,OAAO,CAAC,SAAS,KAAK,OAAO,CAAC,UAAU,MAAM,OAAO,EAAE,CAAC;EACvE;EAEQ,KAAK,MAAiB,MAAmB;AAC/C,UAAM,KAAK,EAAE,KAAK;AAClB,SAAK,QAAQ,OAAO,CAAC,SAAS,CAAC,GAAG,MAAM,EAAE,IAAI,MAAM,KAAI,CAAE,CAAC;AAC3D,eAAW,MAAM,KAAK,QAAQ,EAAE,GAAG,eAAe;EACpD;;qCA9BW,eAAY;EAAA;4EAAZ,eAAY,SAAZ,cAAY,WAAA,YADC,OAAM,CAAA;;;sEACnB,cAAY,CAAA;UADxB;WAAW,EAAE,YAAY,OAAM,CAAE;;;",
+  "names": [],
+  "debugId": "f50961c2-13db-55dc-85e1-e5a033dca992"
+}

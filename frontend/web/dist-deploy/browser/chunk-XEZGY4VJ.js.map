@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "sources": [
+    "src/app/features/carrito/carrito.service.ts"
+  ],
+  "sourcesContent": [
+    "import { HttpClient } from '@angular/common/http';\r\nimport { Injectable, inject } from '@angular/core';\r\nimport { Observable } from 'rxjs';\r\nimport { environment } from '../../../environments/environment';\r\nimport { ActualizarSeleccionPayload, AgregarItemPayload, CarritoOut } from './carrito.model';\r\n\r\n/** Consume CU21 -- Usar carrito de compras. Requiere un CLIENTE autenticado\r\n * (el interceptor HTTP ya adjunta el Bearer token, ver\r\n * core/interceptors/auth.interceptor.ts). El backend resuelve el dueño del\r\n * carrito SIEMPRE desde el token -- este servicio nunca envía cliente_id.\r\n * Cada mutación devuelve el carrito COMPLETO ya actualizado (nunca un item\r\n * aislado), mismo criterio que CU17/CU19/CU20 al devolver su cabecera. */\r\n@Injectable({ providedIn: 'root' })\r\nexport class CarritoService {\r\n  private readonly http = inject(HttpClient);\r\n  private readonly baseUrl = `${environment.apiUrl}/carrito`;\r\n\r\n  consultar(): Observable<CarritoOut> {\r\n    return this.http.get<CarritoOut>(this.baseUrl);\r\n  }\r\n\r\n  agregarItem(payload: AgregarItemPayload): Observable<CarritoOut> {\r\n    return this.http.post<CarritoOut>(`${this.baseUrl}/items`, payload);\r\n  }\r\n\r\n  actualizarSeleccion(itemId: number, payload: ActualizarSeleccionPayload): Observable<CarritoOut> {\r\n    return this.http.patch<CarritoOut>(`${this.baseUrl}/items/${itemId}`, payload);\r\n  }\r\n\r\n  eliminarItem(itemId: number): Observable<CarritoOut> {\r\n    return this.http.delete<CarritoOut>(`${this.baseUrl}/items/${itemId}`);\r\n  }\r\n}\r\n"
+  ],
+  "mappings": ";;;;;;;;;;;;;;AAaM,IAAO,iBAAP,MAAO,gBAAc;EACR,OAAO,OAAO,UAAU;EACxB,UAAU,GAAG,YAAY,MAAM;EAEhD,YAAmC;AACjC,WAAO,KAAK,KAAK,IAAgB,KAAK,OAAO;EAC/C;EAEA,YAAY,SAAoD;AAC9D,WAAO,KAAK,KAAK,KAAiB,GAAG,KAAK,OAAO,UAAU,OAAO;EACpE;EAEA,oBAAoB,QAAgB,SAA4D;AAC9F,WAAO,KAAK,KAAK,MAAkB,GAAG,KAAK,OAAO,UAAU,MAAM,IAAI,OAAO;EAC/E;EAEA,aAAa,QAAuC;AAClD,WAAO,KAAK,KAAK,OAAmB,GAAG,KAAK,OAAO,UAAU,MAAM,EAAE;EACvE;;qCAlBW,iBAAc;EAAA;4EAAd,iBAAc,SAAd,gBAAc,WAAA,YADD,OAAM,CAAA;;;sEACnB,gBAAc,CAAA;UAD1B;WAAW,EAAE,YAAY,OAAM,CAAE;;;",
+  "names": [],
+  "debugId": "91ea69ac-381d-5c57-af76-a4c4090b0aaf"
+}

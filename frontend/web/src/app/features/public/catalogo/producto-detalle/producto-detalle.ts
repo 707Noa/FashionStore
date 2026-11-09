@@ -1,7 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { resolveMediaUrl } from '../../../../core/utils/resolve-media-url';
+import { OfflineMediaPipe } from '../../../../core/pipes/offline-media.pipe';
 import { Icon } from '../../../../core/ui/icon/icon';
 import { CiudadPublica } from '../../sucursales/sucursal.model';
 import { SucursalPublicaService } from '../../sucursales/sucursal.service';
@@ -11,20 +13,28 @@ import { CrearReserva } from '../../../reservas/crear-reserva/crear-reserva';
 import { AgregarCarrito } from '../../../carrito/agregar-carrito/agregar-carrito';
 import { DisponibilidadSucursal, VarianteDisponible } from './disponibilidad.model';
 import { DisponibilidadService } from './disponibilidad.service';
+import { ConnectivityService } from '../../../../core/services/connectivity.service';
+import { OfflinePreparacionService } from '../../../operacion-offline/servicios/offline-preparacion.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { OfflinePreparacion, OfflineStorageService } from '../../../../core/services/offline-storage.service';
 
 const CIUDAD_STORAGE_KEY = 'fashionstore_ciudad_id';
 
 @Component({
   selector: 'app-producto-detalle',
-  imports: [RouterLink, Icon, FormsModule, CrearReserva, AgregarCarrito],
+  imports: [RouterLink, Icon, FormsModule, CrearReserva, AgregarCarrito, CommonModule, OfflineMediaPipe],
   templateUrl: './producto-detalle.html',
   styleUrl: './producto-detalle.scss',
 })
-export class ProductoDetalle {
+export class ProductoDetalle implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly catalogoService = inject(CatalogoService);
   private readonly sucursalService = inject(SucursalPublicaService);
   private readonly disponibilidadService = inject(DisponibilidadService);
+  private readonly connectivity = inject(ConnectivityService);
+  private readonly offlinePreparacion = inject(OfflinePreparacionService);
+  private readonly authService = inject(AuthService);
+  private readonly offlineStorage = inject(OfflineStorageService);
 
   protected readonly resolveMediaUrl = resolveMediaUrl;
 
@@ -58,6 +68,8 @@ export class ProductoDetalle {
   protected readonly loadingCiudades = signal(true);
   protected readonly loadingDisponibilidad = signal(false);
   protected readonly errorDisponibilidad = signal<string | null>(null);
+  protected readonly isOffline = signal(false);
+  protected readonly fechaUltimaActualizacion = signal<string | null>(null);
 
   // CU17 (crear reserva): sucursal que el propio Cliente eligió haciendo
   // clic en una tarjeta de "Stock por sucursal" -- a diferencia de
@@ -105,9 +117,9 @@ export class ProductoDetalle {
     const ciudadId = this.ciudadId();
     const sucursalId = this.sucursalSeleccionadaId();
     if (!producto) {
-      return '/';
+      return '/home';
     }
-    let url = `/producto/${producto.id}?tallaId=${tallaId}&colorId=${colorId}`;
+    let url = `/home/producto/${producto.id}?tallaId=${tallaId}&colorId=${colorId}`;
     if (ciudadId !== null) {
       url += `&ciudadId=${ciudadId}`;
     }
@@ -126,9 +138,9 @@ export class ProductoDetalle {
     const tallaId = this.tallaSeleccionadaId();
     const colorId = this.colorSeleccionadoId();
     if (!producto) {
-      return '/';
+      return '/home';
     }
-    return `/producto/${producto.id}?tallaId=${tallaId}&colorId=${colorId}`;
+    return `/home/producto/${producto.id}?tallaId=${tallaId}&colorId=${colorId}`;
   });
 
   // Se restaura como máximo una vez al volver del login -- si el Cliente
@@ -157,6 +169,49 @@ export class ProductoDetalle {
     this.horaParam = this.route.snapshot.queryParamMap.get('hora');
     this.agregarCarritoParam = this.route.snapshot.queryParamMap.get('agregarCarrito') === '1';
 
+    this.isOffline.set(!this.connectivity.isOnline());
+  }
+
+  ngOnInit(): void {
+    this.connectivity.isOnline$.subscribe((isOnline) => {
+      this.isOffline.set(!isOnline);
+      if (isOnline) {
+        this.fechaUltimaActualizacion.set(null);
+      } else {
+        void this.actualizarFechaUltimaActualizacion();
+      }
+    });
+
+    this.cargarProducto();
+    this.cargarCiudades();
+  }
+
+  private async actualizarFechaUltimaActualizacion(): Promise<void> {
+    const usuario = this.authService.usuario();
+    if (!usuario?.empresa_id) {
+      return;
+    }
+
+    const preparaciones = await this.offlinePreparacion.obtenerTodasLasPreparaciones(
+      usuario.empresa_id,
+    );
+
+    if (preparaciones.length > 0) {
+      const maReciente = preparaciones.reduce((prev: OfflinePreparacion, current: OfflinePreparacion) =>
+        new Date(current.metadata.fecha_preparacion) > new Date(prev.metadata.fecha_preparacion)
+          ? current
+          : prev,
+        preparaciones[0],
+      );
+      this.fechaUltimaActualizacion.set(maReciente.metadata.fecha_preparacion);
+    }
+  }
+
+  private cargarProducto(): void {
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    const tallaIdParam = Number(this.route.snapshot.queryParamMap.get('tallaId')) || null;
+    const colorIdParam = Number(this.route.snapshot.queryParamMap.get('colorId')) || null;
+
     this.catalogoService.getProducto(id).subscribe({
       next: (producto) => {
         this.producto.set(producto);
@@ -171,23 +226,51 @@ export class ProductoDetalle {
         this.loading.set(false);
         this.loadDisponibilidad();
       },
-      error: () => {
+      error: (error: any) => {
         this.loading.set(false);
-        this.notFound.set(true);
+        // Diferenciar el tipo de error
+        if (error.status === 404) {
+          // Producto realmente no existe en la base de datos
+          console.log(`[DETALLE] Producto ${id} no encontrado en el servidor`);
+          this.notFound.set(true);
+        } else if (error.status === 401 || error.status === 403) {
+          // Problema de autenticación o autorización — no usar datos locales
+          console.error(`[DETALLE] Error de acceso (${error.status}) al producto ${id}`);
+          this.notFound.set(true);
+        } else if (error.status === 500) {
+          // Error del servidor — intentar desde IndexedDB si disponible
+          console.error(`[DETALLE] Error del servidor (500) al obtener producto ${id}`, error);
+          this.notFound.set(true);
+        } else {
+          // Fallo de transporte, timeout, etc. — el servicio ya intentó IndexedDB
+          // Si llegamos aquí es que tampoco está localmente disponible
+          console.error(`[DETALLE] Fallo de transporte/timeout al obtener producto ${id}`, error);
+          this.notFound.set(true);
+        }
       },
     });
+  }
 
+  private cargarCiudades(): void {
+    if (this.isOffline()) {
+      this.cargarCiudadesOffline();
+    } else {
+      this.cargarCiudadesOnline();
+    }
+  }
+
+  private cargarCiudadesOnline(): void {
     this.sucursalService.listCiudades().subscribe({
       next: (ciudades) => {
         this.ciudades.set(ciudades);
         this.loadingCiudades.set(false);
-        // Prioridad: la ciudad que traía el returnUrl del login (intención
-        // explícita reciente) -> la última que el Cliente recordaba de una
-        // sesión de navegación anterior (localStorage) -> ninguna. NUNCA la
-        // primera de la lista sin que el Cliente la haya elegido.
+        console.log(`[CU07 CITIES] mode: ONLINE | total: ${ciudades.length} | cities: ${ciudades.map((c) => c.nombre).join(', ')}`);
+        // Prioridad: query param -> localStorage -> Santa Cruz -> primera activa -> null
         const ciudadDeVuelta = ciudades.find((c) => c.id === this.ciudadIdParam);
         const ciudadGuardada = ciudades.find((c) => c.id === this.leerCiudadGuardada());
-        const ciudadInicial = ciudadDeVuelta ?? ciudadGuardada ?? null;
+        const ciudadSantaCruz = ciudades.find((c) => c.nombre === 'Santa Cruz');
+        const ciudadPrimera = ciudades[0] ?? null;
+        const ciudadInicial = ciudadDeVuelta ?? ciudadGuardada ?? ciudadSantaCruz ?? ciudadPrimera ?? null;
         if (ciudadInicial) {
           this.ciudadId.set(ciudadInicial.id);
           this.guardarCiudad(ciudadInicial.id);
@@ -199,6 +282,44 @@ export class ProductoDetalle {
         this.errorDisponibilidad.set('No se pudieron cargar las ciudades. Inténtalo nuevamente.');
       },
     });
+  }
+
+  private async cargarCiudadesOffline(): Promise<void> {
+    const usuario = this.authService.usuario();
+    if (!usuario?.empresa_id) {
+      this.loadingCiudades.set(false);
+      this.errorDisponibilidad.set('No hay información disponible para consultar ciudades sin conexión.');
+      return;
+    }
+
+    try {
+      const ciudades = await this.offlineStorage.getCiudadesOffline(usuario.empresa_id);
+      if (ciudades.length === 0) {
+        this.loadingCiudades.set(false);
+        this.errorDisponibilidad.set('No hay ciudades disponibles en la información preparada.');
+        return;
+      }
+
+      this.ciudades.set(ciudades);
+      this.loadingCiudades.set(false);
+      console.log(`[CU07 CITIES] mode: OFFLINE | total: ${ciudades.length} | cities: ${ciudades.map((c) => c.nombre).join(', ')}`);
+
+      // Prioridad: query param -> localStorage -> Santa Cruz -> primera activa -> null
+      const ciudadDeVuelta = ciudades.find((c) => c.id === this.ciudadIdParam);
+      const ciudadGuardada = ciudades.find((c) => c.id === this.leerCiudadGuardada());
+      const ciudadSantaCruz = ciudades.find((c) => c.nombre === 'Santa Cruz');
+      const ciudadPrimera = ciudades[0] ?? null;
+      const ciudadInicial = ciudadDeVuelta ?? ciudadGuardada ?? ciudadSantaCruz ?? ciudadPrimera ?? null;
+      if (ciudadInicial) {
+        this.ciudadId.set(ciudadInicial.id);
+        this.guardarCiudad(ciudadInicial.id);
+        this.loadDisponibilidad();
+      }
+    } catch (error) {
+      console.error('Error cargando ciudades offline:', error);
+      this.loadingCiudades.set(false);
+      this.errorDisponibilidad.set('Error al cargar ciudades desde información local.');
+    }
   }
 
   private leerCiudadGuardada(): number | null {
@@ -245,20 +366,91 @@ export class ProductoDetalle {
       return;
     }
 
+    if (this.isOffline()) {
+      void this.loadDisponibilidadOffline(producto.id, tallaId, colorId, ciudadId);
+    } else {
+      this.loadDisponibilidadOnline(producto.id, tallaId, colorId, ciudadId);
+    }
+  }
+
+  private loadDisponibilidadOnline(
+    productoId: number,
+    tallaId: number,
+    colorId: number,
+    ciudadId: number,
+  ): void {
     this.loadingDisponibilidad.set(true);
     this.errorDisponibilidad.set(null);
-    this.disponibilidadService.consultar(producto.id, tallaId, colorId, ciudadId).subscribe({
+    this.disponibilidadService.consultar(productoId, tallaId, colorId, ciudadId).subscribe({
       next: (respuesta) => {
-        this.disponibilidad.set(respuesta.disponibilidad);
-        this.loadingDisponibilidad.set(false);
-        this.restaurarSucursalSiCorresponde();
+        if (respuesta) {
+          console.log(`[CU07 BRANCHES] cityId: ${ciudadId} | branches: ${respuesta.disponibilidad.length}`);
+          this.disponibilidad.set(respuesta.disponibilidad);
+          this.loadingDisponibilidad.set(false);
+          this.restaurarSucursalSiCorresponde();
+        }
       },
-      error: () => {
-        this.loadingDisponibilidad.set(false);
-        this.disponibilidad.set([]);
-        this.errorDisponibilidad.set('No se pudo consultar la disponibilidad. Inténtalo nuevamente.');
+      error: async () => {
+        console.warn(`[CU07 AVAILABILITY] HTTP error — intentando fallback offline`);
+        // Si HTTP falla, intentar cargar offline
+        await this.loadDisponibilidadOffline(productoId, tallaId, colorId, ciudadId);
       },
     });
+  }
+
+  private async loadDisponibilidadOffline(
+    productoId: number,
+    tallaId: number,
+    colorId: number,
+    ciudadId: number,
+  ): Promise<void> {
+    const usuario = this.authService.usuario();
+    if (!usuario?.empresa_id) {
+      this.loadingDisponibilidad.set(false);
+      this.disponibilidad.set([]);
+      this.errorDisponibilidad.set('No hay información disponible para consultar disponibilidad sin conexión.');
+      return;
+    }
+
+    try {
+      this.loadingDisponibilidad.set(true);
+      this.errorDisponibilidad.set(null);
+
+      const disponibilidadCompleta = await this.offlineStorage.getDisponibilidadProductoOffline(
+        usuario.empresa_id,
+        productoId,
+      );
+
+      if (disponibilidadCompleta.length === 0) {
+        this.loadingDisponibilidad.set(false);
+        this.disponibilidad.set([]);
+        this.errorDisponibilidad.set('Producto no encontrado en información local.');
+        return;
+      }
+
+      // Filtrar por ciudad
+      const disponibilidadFiltrada = disponibilidadCompleta.filter(
+        (item) => item.ciudad_id === ciudadId
+      );
+
+      console.log(`[CU07 BRANCHES] cityId: ${ciudadId} | branches: ${disponibilidadFiltrada.length}`);
+
+      if (disponibilidadFiltrada.length === 0) {
+        this.disponibilidad.set([]);
+        this.loadingDisponibilidad.set(false);
+        this.errorDisponibilidad.set('No hay sucursales disponibles en esta ciudad.');
+        return;
+      }
+
+      this.disponibilidad.set(disponibilidadFiltrada);
+      this.loadingDisponibilidad.set(false);
+      this.restaurarSucursalSiCorresponde();
+    } catch (error) {
+      console.error('Error cargando disponibilidad offline:', error);
+      this.loadingDisponibilidad.set(false);
+      this.disponibilidad.set([]);
+      this.errorDisponibilidad.set('Error al cargar disponibilidad desde información local.');
+    }
   }
 
   // Vuelta del login (ver returnUrlReserva/sucursalIdParam): si esa

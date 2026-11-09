@@ -16,8 +16,10 @@ class CategoriasRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def listar(self, search: str | None = None, is_active: bool | None = None) -> list[Categoria]:
+    def listar(self, search: str | None = None, is_active: bool | None = None, empresa_id: int | None = None) -> list[Categoria]:
         stmt = select(Categoria)
+        if empresa_id is not None:
+            stmt = stmt.where(Categoria.empresa_id == empresa_id)
         if search:
             stmt = stmt.where(func.lower(Categoria.nombre).like(f"%{search.strip().lower()}%"))
         if is_active is not None:
@@ -25,13 +27,18 @@ class CategoriasRepository:
         stmt = stmt.order_by(Categoria.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
-    def get_by_id(self, categoria_id: int) -> Categoria | None:
-        return self.db.get(Categoria, categoria_id)
+    def get_by_id(self, categoria_id: int, empresa_id: int | None = None) -> Categoria | None:
+        stmt = select(Categoria).where(Categoria.id == categoria_id)
+        if empresa_id is not None:
+            stmt = stmt.where(Categoria.empresa_id == empresa_id)
+        return self.db.execute(stmt).scalar_one_or_none()
 
-    def existe_nombre(self, nombre: str, excluyendo_id: int | None = None) -> bool:
+    def existe_nombre(self, nombre: str, empresa_id: int | None = None, excluyendo_id: int | None = None) -> bool:
         stmt = select(func.count()).select_from(Categoria).where(
             func.lower(Categoria.nombre) == nombre.strip().lower()
         )
+        if empresa_id is not None:
+            stmt = stmt.where(Categoria.empresa_id == empresa_id)
         if excluyendo_id is not None:
             stmt = stmt.where(Categoria.id != excluyendo_id)
         return self.db.execute(stmt).scalar_one() > 0
@@ -47,13 +54,19 @@ class CategoriasRepository:
         self.db.refresh(categoria)
         return categoria
 
+    def eliminar(self, categoria: Categoria) -> None:
+        self.db.delete(categoria)
+        self.db.commit()
+
 
 class TallasRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def listar(self, search: str | None = None, is_active: bool | None = None) -> list[Talla]:
+    def listar(self, search: str | None = None, is_active: bool | None = None, empresa_id: int | None = None) -> list[Talla]:
         stmt = select(Talla)
+        if empresa_id is not None:
+            stmt = stmt.where(Talla.empresa_id == empresa_id)
         if search:
             stmt = stmt.where(func.lower(Talla.nombre).like(f"%{search.strip().lower()}%"))
         if is_active is not None:
@@ -61,13 +74,18 @@ class TallasRepository:
         stmt = stmt.order_by(Talla.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
-    def get_by_id(self, talla_id: int) -> Talla | None:
-        return self.db.get(Talla, talla_id)
+    def get_by_id(self, talla_id: int, empresa_id: int | None = None) -> Talla | None:
+        stmt = select(Talla).where(Talla.id == talla_id)
+        if empresa_id is not None:
+            stmt = stmt.where(Talla.empresa_id == empresa_id)
+        return self.db.execute(stmt).scalar_one_or_none()
 
-    def existe_nombre(self, nombre: str, excluyendo_id: int | None = None) -> bool:
+    def existe_nombre(self, nombre: str, empresa_id: int | None = None, excluyendo_id: int | None = None) -> bool:
         stmt = select(func.count()).select_from(Talla).where(
             func.lower(Talla.nombre) == nombre.strip().lower()
         )
+        if empresa_id is not None:
+            stmt = stmt.where(Talla.empresa_id == empresa_id)
         if excluyendo_id is not None:
             stmt = stmt.where(Talla.id != excluyendo_id)
         return self.db.execute(stmt).scalar_one() > 0
@@ -83,13 +101,19 @@ class TallasRepository:
         self.db.refresh(talla)
         return talla
 
+    def eliminar(self, talla: Talla) -> None:
+        self.db.delete(talla)
+        self.db.commit()
+
 
 class ColoresRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def listar(self, search: str | None = None, is_active: bool | None = None) -> list[Color]:
+    def listar(self, search: str | None = None, is_active: bool | None = None, empresa_id: int | None = None) -> list[Color]:
         stmt = select(Color)
+        if empresa_id is not None:
+            stmt = stmt.where(Color.empresa_id == empresa_id)
         if search:
             stmt = stmt.where(func.lower(Color.nombre).like(f"%{search.strip().lower()}%"))
         if is_active is not None:
@@ -97,13 +121,18 @@ class ColoresRepository:
         stmt = stmt.order_by(Color.nombre)
         return list(self.db.execute(stmt).scalars().all())
 
-    def get_by_id(self, color_id: int) -> Color | None:
-        return self.db.get(Color, color_id)
+    def get_by_id(self, color_id: int, empresa_id: int | None = None) -> Color | None:
+        stmt = select(Color).where(Color.id == color_id)
+        if empresa_id is not None:
+            stmt = stmt.where(Color.empresa_id == empresa_id)
+        return self.db.execute(stmt).scalar_one_or_none()
 
-    def existe_nombre(self, nombre: str, excluyendo_id: int | None = None) -> bool:
+    def existe_nombre(self, nombre: str, empresa_id: int | None = None, excluyendo_id: int | None = None) -> bool:
         stmt = select(func.count()).select_from(Color).where(
             func.lower(Color.nombre) == nombre.strip().lower()
         )
+        if empresa_id is not None:
+            stmt = stmt.where(Color.empresa_id == empresa_id)
         if excluyendo_id is not None:
             stmt = stmt.where(Color.id != excluyendo_id)
         return self.db.execute(stmt).scalar_one() > 0
@@ -118,3 +147,7 @@ class ColoresRepository:
         self.db.commit()
         self.db.refresh(color)
         return color
+
+    def eliminar(self, color: Color) -> None:
+        self.db.delete(color)
+        self.db.commit()
