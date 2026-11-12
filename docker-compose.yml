@@ -28,9 +28,8 @@ services:
 
   frontend:
     build: ./frontend/web
-    # ports:
-    #   - "${FRONTEND_PORT:-4200}:80"
-    # Frontend ahora se sirve localmente en http://localhost:4200 con serve-prod.py
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
     depends_on:
       - backend
     restart: unless-stopped
@@ -48,7 +47,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fashionstore} -d ${POSTGRES_DB:-fashionstore}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fashionstore} -d ${POSTGRES_DB:-fashionstore}" ]
       interval: 5s
       timeout: 5s
       retries: 10

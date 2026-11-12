@@ -20,7 +20,10 @@ RUN rm -rf dist .angular node_modules/.cache && npm run build:docker-local
 # ---- Etapa 2: servir los archivos estáticos con Nginx ----
 FROM nginx:1.27-alpine
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV BACKEND_HOST=backend
+ENV NGINX_ENVSUBST_FILTER=^BACKEND_HOST$
+
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
 
 EXPOSE 80
