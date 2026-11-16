@@ -16,8 +16,8 @@ FROM nginx:1.27-alpine
 COPY nginx-entrypoint.sh /docker-entrypoint.d/90-backend-url.sh
 RUN chmod +x /docker-entrypoint.d/90-backend-url.sh
 
-# Copiar configuración de Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copiar configuración de Nginx como template (para sustitución de variables en entrypoint)
+COPY nginx.conf /etc/nginx/conf.d/default.conf.template
 
 # Copiar archivos compilados
 COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
