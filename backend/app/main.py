@@ -107,11 +107,35 @@ from modules.P6_InnovacionYAnalisis.CU29_ObtenerRecomendacionesIA.router import 
 from modules.P6_InnovacionYAnalisis.CU30_ConsultarReportesIndicadores.router import (
     router as cu30_reportes_router,
 )
+from modules.PK10_ReportesGenerativosYAnaliticaInteligente.CU16_SolicitarReporteGenerativo.router import (
+    router as cu16_solicitar_reporte_router,
+)
+from modules.PK10_ReportesGenerativosYAnaliticaInteligente.CU17_GenerarVisualizarReporteDinamico.router import (
+    router as cu17_generar_reporte_dinamico_router,
+)
+from modules.PK10_ReportesGenerativosYAnaliticaInteligente.CU18_ExportarReporteGenerado.router import (
+    router as cu18_exportar_reporte_router,
+)
 from modules.PK08_OperacionOfflineWebYMovil.CU06_PrepararInformacionOffline.router import (
     router as cu06_offline_router,
 )
 from modules.PK08_OperacionOfflineWebYMovil.CU06_PrepararInformacionOffline.media_router import (
     router as media_router,
+)
+from modules.PK09_SincronizacionYConsistencia.CU11_SincronizarOperacionesPendientes.router import (
+    router as cu11_sincronizar_operaciones_router,
+)
+from modules.PK09_SincronizacionYConsistencia.CU12_ConsultarResultadoSincronizacion.router import (
+    router as cu12_consultar_resultado_router,
+)
+from modules.PK09_SincronizacionYConsistencia.CU13_ReintentoOperacionesOffline.router import (
+    router as cu13_reintento_router,
+)
+from modules.PK09_SincronizacionYConsistencia.CU14_GestionarConflictosSincronizacion.router import (
+    router as cu14_conflictos_router,
+)
+from modules.PK09_SincronizacionYConsistencia.CU15_ReconciliarInventario.router import (
+    router as cu15_reconciliar_inventario_router,
 )
 
 app = FastAPI(
@@ -171,7 +195,15 @@ app.include_router(cu31_comprobante_venta_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu32_promociones_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu29_asistente_ia_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu30_reportes_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu16_solicitar_reporte_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu17_generar_reporte_dinamico_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu18_exportar_reporte_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cu06_offline_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu11_sincronizar_operaciones_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu12_consultar_resultado_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu13_reintento_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu14_conflictos_router, prefix=settings.API_V1_PREFIX)
+app.include_router(cu15_reconciliar_inventario_router, prefix=settings.API_V1_PREFIX)
 app.include_router(media_router, prefix=settings.API_V1_PREFIX)
 
 # Crear directorio de uploads (servido por media_router que pasa por CORSMiddleware)

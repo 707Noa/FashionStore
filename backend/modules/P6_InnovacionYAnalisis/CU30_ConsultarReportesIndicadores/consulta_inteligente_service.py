@@ -159,9 +159,10 @@ def _encabezado_contexto(desde: date | None, hasta: date | None, sucursal_nombre
 
 
 class ConsultaInteligenteService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, empresa_id: int):
         self._reportes = ReportesService(db)
         self._sucursales = SucursalLecturaRepository(db)
+        self._empresa_id = empresa_id
 
     def consultar(self, payload: ConsultaInteligenteRequest) -> ConsultaInteligenteResponse:
         try:
@@ -218,15 +219,16 @@ class ConsultaInteligenteService:
         """Devuelve (sucursal_id, sucursal_nombre) -- ambos None cuando no
         aplica ningún filtro de sucursal. Lanza
         SucursalMencionadaNoEncontradaError cuando SÍ mencionó un nombre
-        pero no coincide con ninguna sucursal activa real."""
+        pero no coincide con ninguna sucursal ACTIVA DE LA EMPRESA
+        AUTENTICADA (nunca busca fuera del tenant)."""
         if isinstance(nombre_mencionado, str) and nombre_mencionado.strip():
-            sucursal = self._sucursales.buscar_por_nombre(nombre_mencionado)
+            sucursal = self._sucursales.buscar_por_nombre(nombre_mencionado, self._empresa_id)
             if sucursal is None:
                 raise SucursalMencionadaNoEncontradaError
             return sucursal.id, sucursal.nombre
 
         if sucursal_id_actual is not None:
-            sucursal = self._sucursales.get_activa(sucursal_id_actual)
+            sucursal = self._sucursales.get_activa(sucursal_id_actual, self._empresa_id)
             if sucursal is not None:
                 return sucursal.id, sucursal.nombre
 
@@ -238,7 +240,7 @@ class ConsultaInteligenteService:
         encabezado = _encabezado_contexto(desde, hasta, sucursal_nombre)
 
         if intencion in ("resumen_general", "devoluciones_cambios"):
-            datos = self._reportes.resumen(desde, hasta, sucursal_id)
+            datos = self._reportes.resumen(desde, hasta, sucursal_id, self._empresa_id)
             contexto = (
                 f"{encabezado}"
                 f"Ingresos: Bs {datos.ingresos:.2f}\n"
@@ -261,7 +263,7 @@ class ConsultaInteligenteService:
             return datos, contexto, hay_datos
 
         if intencion in ("ventas", "ingresos", "ventas_por_sucursal", "ventas_por_metodo_pago", "ventas_por_tipo"):
-            datos = self._reportes.ventas(desde, hasta, sucursal_id)
+            datos = self._reportes.ventas(desde, hasta, sucursal_id, self._empresa_id)
             lineas = [
                 encabezado,
                 f"Ingresos totales: Bs {datos.ingresos_totales:.2f}",
@@ -283,7 +285,7 @@ class ConsultaInteligenteService:
             return datos, "\n".join(lineas), datos.ventas_totales > 0
 
         if intencion == "productos_mas_vendidos":
-            datos = self._reportes.productos_mas_vendidos(desde, hasta, sucursal_id)
+            datos = self._reportes.productos_mas_vendidos(desde, hasta, sucursal_id, self._empresa_id)
             if datos.productos:
                 contexto = encabezado + "Productos más vendidos:\n" + "\n".join(
                     f"- {p.nombre}: {p.unidades} unidades, Bs {p.ingresos:.2f}" for p in datos.productos
@@ -293,7 +295,7 @@ class ConsultaInteligenteService:
             return datos, contexto, len(datos.productos) > 0
 
         if intencion in ("inventario", "stock_bajo"):
-            datos = self._reportes.inventario(sucursal_id)
+            datos = self._reportes.inventario(sucursal_id, self._empresa_id)
             lineas = [
                 f"Sucursal: {sucursal_nombre or 'todas las sucursales'}",
                 f"Stock físico total: {datos.stock_fisico_total}",
@@ -316,7 +318,7 @@ class ConsultaInteligenteService:
             return datos, contexto, hay_datos
 
         if intencion == "reservas":
-            datos = self._reportes.reservas(desde, hasta, sucursal_id)
+            datos = self._reportes.reservas(desde, hasta, sucursal_id, self._empresa_id)
             contexto = (
                 f"{encabezado}"
                 f"Reservas creadas: {datos.creadas}\n"

@@ -188,6 +188,19 @@ export const routes: Routes = [
         canActivate: [authGuard],
         title: 'Operación Offline · Fashion Store',
       },
+      {
+        // CU12 -- Consultar resultado de sincronización. Disponible para
+        // usuarios autenticados (clientesy administradores). Muestra resultados
+        // de operaciones sincronizadas via CU11, tanto online (desde backend)
+        // como offline (desde IndexedDB cuando backend no está disponible).
+        path: 'resultados-sincronizacion',
+        loadComponent: () =>
+          import('./features/operacion-offline/cu12-consultar-resultado-sincronizacion/componentes/resultados-sincronizacion.component').then(
+            (m) => m.ResultadosSincronizacionComponent,
+          ),
+        canActivate: [authGuard],
+        title: 'Resultados de Sincronización · Fashion Store',
+      },
     ],
   },
   {
@@ -308,8 +321,9 @@ export const routes: Routes = [
         },
       },
       {
-        // CU30 -- Consultar reportes e indicadores (primera parte: dashboard
-        // analítico, sin voz/IA todavía).
+        // CU30/CU17 -- Consultar reportes e indicadores y generar reportes dinámicos.
+        // CU17 integrada en la misma pantalla con filtros adicionales (categoría, producto)
+        // y nuevas visualizaciones (ventas por semana, ingresos por categoría).
         path: 'reportes',
         loadComponent: () =>
           import('./features/admin/reportes-indicadores/reportes').then((m) => m.Reportes),

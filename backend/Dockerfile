@@ -13,4 +13,7 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Shell form (no JSON) para que interpole ${PORT} en runtime
+# Railway asigna PORT dinamicamente (ej: PORT=12345)
+# Fallback a 8000 si PORT no está definida (desarrollo local)
+CMD ["/bin/sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
