@@ -6,13 +6,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
 COPY . .
-# npm run build:docker-local usa configuration "development"
-# que reemplaza environment.ts con environment.development.ts (localhost:8000/api/v1)
-# para docker-compose local.
-#
-# En Railway, se ejecuta npm run build (production) que usa environment.ts
-# con apiUrl: '/api/v1' (URL relativa). Nginx actúa como reverse proxy.
-RUN rm -rf dist .angular node_modules/.cache && npm run build:docker-local
+
+RUN rm -rf dist .angular node_modules/.cache && npm run build
 
 # ---- Etapa 2: servir los archivos estáticos con Nginx ----
 FROM nginx:1.27-alpine
