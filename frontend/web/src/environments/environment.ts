@@ -1,6 +1,7 @@
 export const environment = {
   production: true,
-  // Para testing PWA offline con localhost, mantener localhost:8000
-  // En producción real, cambiar a https://fashionstore-api.vercel.app/api/v1
-  apiUrl: 'http://localhost:8000/api/v1',
+  // URL relativa — Nginx proxy maneja /api/ → backend
+  // En docker-compose: http://localhost:4200/api/v1/ → nginx → http://backend:8000/api/v1/
+  // En Railway: https://frontend-domain/api/v1/ → nginx → http://backend-service:8000/api/v1/
+  apiUrl: '/api/v1',
 };
