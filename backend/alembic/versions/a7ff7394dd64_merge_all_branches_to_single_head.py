@@ -20,6 +20,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    # Expand alembic_version.version_num to allow longer revision IDs (e.g., 003_crear_operaciones_sincronizacion_log)
+    op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
     pass
 
 
