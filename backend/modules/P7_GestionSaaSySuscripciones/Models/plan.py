@@ -24,6 +24,9 @@ class Plan(Base):
     descripcion: Mapped[str] = mapped_column(Text, nullable=False)
 
     precio: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
+    duracion_dias: Mapped[int] = mapped_column(nullable=False, default=30)
+    duracion_prueba_dias: Mapped[int | None] = mapped_column(nullable=True, default=None)
+    permite_prueba_gratuita: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     limite_sucursales: Mapped[int] = mapped_column(nullable=False, default=1)
     limite_usuarios: Mapped[int] = mapped_column(nullable=False, default=5)

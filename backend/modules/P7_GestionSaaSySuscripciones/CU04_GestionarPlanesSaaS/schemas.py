@@ -13,6 +13,9 @@ class PlanBase(BaseModel):
     slug: str = Field(..., min_length=1, max_length=50)
     descripcion: str = Field(..., min_length=1)
     precio: Decimal = Field(..., ge=Decimal("0.00"))
+    duracion_dias: int = Field(..., ge=1)
+    permite_prueba_gratuita: bool = False
+    duracion_prueba_dias: int | None = None
     limite_sucursales: int = Field(..., ge=1)
     limite_usuarios: int = Field(..., ge=1)
 
@@ -33,6 +36,9 @@ class PlanActualizar(BaseModel):
     nombre: str | None = Field(None, min_length=1, max_length=100)
     descripcion: str | None = Field(None, min_length=1)
     precio: Decimal | None = Field(None, ge=Decimal("0.00"))
+    duracion_dias: int | None = Field(None, ge=1)
+    permite_prueba_gratuita: bool | None = None
+    duracion_prueba_dias: int | None = None
     limite_sucursales: int | None = Field(None, ge=1)
     limite_usuarios: int | None = Field(None, ge=1)
 
@@ -61,6 +67,9 @@ class PlanListResponse(BaseModel):
     slug: str
     descripcion: str
     precio: Decimal
+    duracion_dias: int
+    permite_prueba_gratuita: bool
+    duracion_prueba_dias: int | None
     limite_sucursales: int
     limite_usuarios: int
     gestion_productos: bool
@@ -69,7 +78,9 @@ class PlanListResponse(BaseModel):
     operacion_offline: bool
     reportes_convencionales: bool
     reportes_generativos_ia: bool
-    es_activo: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

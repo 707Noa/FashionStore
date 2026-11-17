@@ -59,15 +59,20 @@ def listar_planes_activos(
             slug=p.slug,
             descripcion=p.descripcion,
             precio=p.precio,
+            duracion_dias=p.duracion_dias,
             limite_sucursales=p.limite_sucursales,
             limite_usuarios=p.limite_usuarios,
+            permite_prueba_gratuita=p.permite_prueba_gratuita,
+            duracion_prueba_dias=p.duracion_prueba_dias,
             gestion_productos=p.gestion_productos,
             gestion_ventas=p.gestion_ventas,
             reservas=p.reservas,
             operacion_offline=p.operacion_offline,
             reportes_convencionales=p.reportes_convencionales,
             reportes_generativos_ia=p.reportes_generativos_ia,
-            es_activo=p.is_active,
+            is_active=p.is_active,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
         )
         for p in planes
     ]
@@ -104,15 +109,20 @@ def listar_planes(
             slug=p.slug,
             descripcion=p.descripcion,
             precio=p.precio,
+            duracion_dias=p.duracion_dias,
             limite_sucursales=p.limite_sucursales,
             limite_usuarios=p.limite_usuarios,
+            permite_prueba_gratuita=p.permite_prueba_gratuita,
+            duracion_prueba_dias=p.duracion_prueba_dias,
             gestion_productos=p.gestion_productos,
             gestion_ventas=p.gestion_ventas,
             reservas=p.reservas,
             operacion_offline=p.operacion_offline,
             reportes_convencionales=p.reportes_convencionales,
             reportes_generativos_ia=p.reportes_generativos_ia,
-            es_activo=p.is_active,
+            is_active=p.is_active,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
         )
         for p in planes
     ]
