@@ -18,13 +18,14 @@ if "DATABASE_URL" not in os.environ:
     print("[CRITICAL] DATABASE_URL not set. This script must run in Railway environment.")
     sys.exit(1)
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, time
 from decimal import Decimal
 from random import randint, choice, uniform
 
 from app.db.session import SessionLocal
 from modules.P7_GestionSaaSySuscripciones.Models.empresa import Empresa
 from modules.P2_UsuariosYAccesos.Models.usuario import Usuario
+from modules.P2_UsuariosYAccesos.Models.rol import RolUsuario
 from modules.P1_SucursalesYCatalogos.Models.sucursal import Sucursal
 from modules.P1_SucursalesYCatalogos.Models.producto_variante import ProductoVariante
 from modules.P4_ReservasYAtencion.Models.reserva import Reserva, ReservaDetalle, EstadoReserva, calcular_estado_general
@@ -44,6 +45,7 @@ print("")
 print("This script will:")
 print("  - Update 60 existing sales to PAGADA state")
 print("  - Diversify payment methods (STRIPE, EFECTIVO, TARJETA, QR)")
+print("  - Create ~40 clientes")
 print("  - Create ~40 reservas with various states")
 print("  - Create ~15 devoluciones/cambios linked to sales")
 print("  - Idempotent execution")
@@ -96,26 +98,49 @@ try:
     db.flush()
     print(f"[OK] Ventas actualizadas a PAGADA: {count_ventas_updated}")
 
+    # === CREAR CLIENTES PARA RESERVAS ===
+    count_clientes = 0
+    clientes = []
+    for idx in range(1, 41):
+        correo_cliente = f"cliente_{idx}@fashionstore.demo"
+        existing_cliente = db.query(Usuario).filter_by(correo=correo_cliente).first()
+
+        if not existing_cliente:
+            cliente = Usuario(
+                empresa_id=EMPRESA_ID,
+                nombre=f"Cliente Demo {idx}",
+                correo=correo_cliente,
+                password_hash="demo_password_hash",
+                rol=RolUsuario.CLIENTE
+            )
+            db.add(cliente)
+            clientes.append(cliente)
+            count_clientes += 1
+        else:
+            clientes.append(existing_cliente)
+
+    db.flush()
+    print(f"[OK] Clientes: {count_clientes}")
+
     # === CREAR RESERVAS ===
     count_reservas = 0
     count_reserva_detalles = 0
-    clientes = db.query(Venta).filter_by(empresa_id=EMPRESA_ID).limit(40).all()
 
-    for idx, venta in enumerate(clientes):
+    for idx, cliente in enumerate(clientes):
         codigo_reserva = f"RS-{idx+1:06d}"
         existing_reserva = db.query(Reserva).filter_by(codigo_reserva=codigo_reserva).first()
 
         if not existing_reserva:
             days_offset = randint(0, 180)
             fecha_reserva = BASE_DATE + timedelta(days=days_offset)
-            hora_inicio = f"{randint(9, 18):02d}:{choice([0, 15, 30, 45]):02d}:00"
+            hora_inicio = time(randint(9, 18), choice([0, 15, 30, 45]))
 
             estados_posibles = [EstadoReserva.PENDIENTE, EstadoReserva.PREPARADA, EstadoReserva.EN_ATENCION,
                                EstadoReserva.LISTA_PARA_CAJA, EstadoReserva.ATENDIDA, EstadoReserva.CANCELADA, EstadoReserva.VENCIDA]
 
             reserva = Reserva(
                 empresa_id=EMPRESA_ID,
-                cliente_id=None,
+                cliente_id=cliente.id,
                 sucursal_id=choice(sucursales).id,
                 codigo_reserva=codigo_reserva,
                 fecha_reserva=fecha_reserva.date(),
@@ -189,6 +214,7 @@ try:
     print("\n[SUCCESS] Dashboard data enrichment completed")
     print(f"\nTotal records updated/created:")
     print(f"  Ventas actualizadas a PAGADA: {count_ventas_updated}")
+    print(f"  Clientes: {count_clientes}")
     print(f"  Reservas: {count_reservas}")
     print(f"  Detalles Reserva: {count_reserva_detalles}")
     print(f"  Devoluciones/Cambios: {count_devoluciones}")
