@@ -13,6 +13,7 @@ import { ProductoService } from '../../../sucursales-catalogo/cu08-gestionar-pro
 import {
   InventarioReporte,
   ProductoMasVendido,
+  ReporteAgrupado,
   ReportesFiltro,
   ReservasReporte,
   ResumenReporte,
@@ -148,6 +149,32 @@ export class Reportes implements OnInit {
   protected readonly escuchando = signal(false);
   protected readonly generandoConsulta = signal(false);
   protected readonly resumenIA = signal<string | null>(null);
+  // Reporte dinámico estructurado (tabla por sucursal + gráfico), ver html.
+  protected readonly reporteAgrupado = signal<ReporteAgrupado | null>(null);
+  // El backend pidió una aclaración (no se generó ningún reporte): solo cambia el título del recuadro.
+  protected readonly esAclaracion = signal(false);
+
+  protected readonly vistaReporte = computed(() => {
+    const r = this.reporteAgrupado();
+    if (!r) {
+      return null;
+    }
+    const esSerie = r.tipo === 'serie_por_grupo';
+    const grupos = r.grupos.map((g) => ({
+      grupo: g,
+      barras: esSerie
+        ? []
+        : g.filas.map(
+            (f): BarraItem => ({
+              etiqueta: `${f.posicion}. ${f.etiqueta}`,
+              valor: r.metrica === 'unidades' ? (f.unidades ?? 0) : f.ingresos,
+              valorTexto: r.metrica === 'unidades' ? `${f.unidades ?? 0} u.` : `Bs ${f.ingresos.toFixed(2)}`,
+            }),
+          ),
+      puntos: esSerie ? g.filas.map((f): PuntoLinea => ({ etiqueta: f.etiqueta, valor: f.ingresos })) : [],
+    }));
+    return { reporte: r, esSerie, grupos };
+  });
   protected readonly avisoVoz = signal<string | null>(null);
 
   protected readonly cargando = signal(true);
@@ -334,6 +361,8 @@ export class Reportes implements OnInit {
   protected limpiarConsultaInteligente(): void {
     this.consultaTexto.set('');
     this.resumenIA.set(null);
+    this.reporteAgrupado.set(null);
+    this.esAclaracion.set(false);
     this.avisoVoz.set(null);
   }
 
@@ -377,6 +406,8 @@ export class Reportes implements OnInit {
 
     this.generandoConsulta.set(true);
     this.resumenIA.set(null);
+    this.reporteAgrupado.set(null);
+    this.esAclaracion.set(false);
 
     this.service
       .consultaInteligente({
@@ -398,6 +429,8 @@ export class Reportes implements OnInit {
       .subscribe({
         next: (respuesta) => {
           this.resumenIA.set(respuesta.resumen);
+          this.reporteAgrupado.set(respuesta.reporte_agrupado ?? null);
+          this.esAclaracion.set(respuesta.requiere_aclaracion === true);
 
           if (!respuesta.exito || !respuesta.filtros) {
             return;

@@ -148,8 +148,8 @@ def generar_con_reintento(client, **kwargs):
     ultimo_error: Exception | None = None
     for intento in range(1, _INTENTOS_MAXIMOS + 1):
         try:
-            # Agregar timeout para evitar bloqueo indefinido de Gemini API
-            kwargs["request_options"] = {"timeout_seconds": _TIMEOUT_GEMINI_SEGUNDOS}
+            # `generate_content` de google-genai no acepta `request_options`
+            # (provocaba TypeError en cada llamada y Gemini nunca respondía).
             return client.models.generate_content(**kwargs)
         except Exception as exc:  # noqa: BLE001 - cualquier fallo de red/SDK es candidato a reintento
             ultimo_error = exc

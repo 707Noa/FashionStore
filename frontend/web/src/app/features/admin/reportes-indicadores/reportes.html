@@ -72,9 +72,103 @@
       <div class="resumen-ia">
         <span class="resumen-ia__icono" aria-hidden="true">✦</span>
         <div class="resumen-ia__cuerpo">
-          <span class="resumen-ia__titulo">Resumen</span>
+          <span class="resumen-ia__titulo">{{ esAclaracion() ? 'Aclaración' : 'Resumen' }}</span>
           <p class="resumen-ia__texto">{{ resumenIA() }}</p>
         </div>
+      </div>
+    }
+
+    @if (vistaReporte(); as vista) {
+      <div class="reporte-dinamico">
+        <h3 class="reporte-dinamico__titulo">{{ vista.reporte.titulo }}</h3>
+        <p class="reporte-dinamico__periodo"><strong>Periodo:</strong> {{ vista.reporte.periodo.descripcion }}</p>
+        <ul class="reporte-dinamico__chips">
+          @for (f of vista.reporte.filtros_aplicados; track f) {
+            <li>{{ f }}</li>
+          }
+          <li>Métrica: {{ vista.reporte.metrica === 'unidades' ? 'unidades vendidas' : 'ingresos (Bs)' }}</li>
+          @if (vista.reporte.limite) {
+            <li>TOP {{ vista.reporte.limite }} ({{ vista.reporte.orden === 'desc' ? 'mayor a menor' : 'menor a mayor' }})</li>
+          }
+        </ul>
+        @for (s of vista.reporte.supuestos; track s) {
+          <p class="reporte-dinamico__supuesto">ℹ {{ s }}</p>
+        }
+
+        @for (item of vista.grupos; track item.grupo.id) {
+          <article class="reporte-dinamico__grupo">
+            <h4>{{ item.grupo.nombre }}</h4>
+            @if (item.grupo.filas.length === 0) {
+              <p class="reporte-dinamico__vacio">Sin ventas en el periodo.</p>
+            } @else {
+              <table class="reporte-dinamico__tabla">
+                <thead>
+                  <tr>
+                    @if (vista.esSerie) {
+                      <th>{{ vista.reporte.granularidad === 'mes' ? 'Mes' : 'Semana (desde)' }}</th>
+                      <th class="num">Ventas</th>
+                      <th class="num">Ingresos (Bs)</th>
+                    } @else {
+                      <th>#</th>
+                      <th>Producto</th>
+                      <th class="num">Unidades</th>
+                      <th class="num">Ingresos (Bs)</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (f of item.grupo.filas; track f.etiqueta) {
+                    <tr>
+                      @if (vista.esSerie) {
+                        <td>{{ f.etiqueta }}</td>
+                        <td class="num">{{ f.ventas }}</td>
+                        <td class="num">{{ f.ingresos.toFixed(2) }}</td>
+                      } @else {
+                        <td>{{ f.posicion }}</td>
+                        <td>{{ f.etiqueta }}</td>
+                        <td class="num">{{ f.unidades }}</td>
+                        <td class="num">{{ f.ingresos.toFixed(2) }}</td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    @if (vista.esSerie) {
+                      <td>Total</td>
+                      <td></td>
+                      <td class="num">{{ item.grupo.total_ingresos.toFixed(2) }}</td>
+                    } @else {
+                      <td colspan="2">Total mostrado</td>
+                      <td class="num">{{ item.grupo.total_unidades }}</td>
+                      <td class="num">{{ item.grupo.total_ingresos.toFixed(2) }}</td>
+                    }
+                  </tr>
+                  @if (!vista.esSerie && item.grupo.total_grupo_unidades !== null) {
+                    <tr class="reporte-dinamico__total-grupo">
+                      <td colspan="2">Total vendido en {{ item.grupo.nombre }}</td>
+                      <td class="num">{{ item.grupo.total_grupo_unidades }}</td>
+                      <td class="num">{{ (item.grupo.total_grupo_ingresos ?? 0).toFixed(2) }}</td>
+                    </tr>
+                  }
+                </tfoot>
+              </table>
+              @if (vista.esSerie) {
+                <app-grafico-lineas [puntos]="item.puntos" />
+              } @else {
+                <app-grafico-barras [items]="item.barras" />
+              }
+            }
+          </article>
+        }
+
+        <p class="reporte-dinamico__total">
+          <strong>Total general:</strong>
+          @if (vista.reporte.total_unidades !== null) {
+            {{ vista.reporte.total_unidades }} unidades ·
+          }
+          Bs {{ vista.reporte.total_ingresos.toFixed(2) }}
+        </p>
       </div>
     }
     </section>

@@ -209,11 +209,14 @@ class ReportesService:
         )
 
     def productos_mas_vendidos(
-        self, desde: date | None, hasta: date | None, sucursal_id: int | None, empresa_id: int
+        self, desde: date | None, hasta: date | None, sucursal_id: int | None, empresa_id: int,
+        limite: int | None = None, metrica: str = "unidades", orden: str = "desc",
     ) -> ProductosMasVendidosReporteOut:
         self._validar(desde, hasta, sucursal_id, empresa_id)
 
-        filas = self._ventas.top_productos(desde, hasta, sucursal_id, _LIMITE_TOP_PRODUCTOS, empresa_id)
+        filas = self._ventas.top_productos(
+            desde, hasta, sucursal_id, limite or _LIMITE_TOP_PRODUCTOS, empresa_id, metrica, orden
+        )
         return ProductosMasVendidosReporteOut(
             productos=[
                 ProductoMasVendidoOut(producto_id=pid, nombre=nombre, unidades=unidades, ingresos=float(ingresos))

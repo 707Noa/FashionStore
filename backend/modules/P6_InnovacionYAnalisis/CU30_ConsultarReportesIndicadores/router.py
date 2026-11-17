@@ -53,6 +53,18 @@ logger = logging.getLogger(__name__)
 
 require_administrador = require_roles(RolUsuario.ADMINISTRADOR)
 
+_MSG_SIN_EMPRESA = "Tu usuario no está asociado a ninguna empresa."
+
+
+def require_administrador_con_empresa(actor: Usuario = Depends(require_administrador)) -> Usuario:
+    """Límite de autorización de TODOS los endpoints de CU30: además del rol
+    ADMINISTRADOR, exige una empresa asociada. Un ADMINISTRADOR con
+    empresa_id nulo recibe 403 antes de ejecutar cualquier consulta o
+    validación de plan (nunca se consulta sin un tenant autorizado)."""
+    if actor.empresa_id is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, _MSG_SIN_EMPRESA)
+    return actor
+
 _RESPUESTA_FALLBACK_INESPERADA = ConsultaInteligenteResponse(
     exito=False,
     intencion=None,
@@ -73,7 +85,7 @@ def obtener_resumen(
     fecha_hasta: date | None = Query(None),
     sucursal_id: int | None = Query(None),
     db: Session = Depends(get_db),
-    actor: Usuario = Depends(require_administrador),
+    actor: Usuario = Depends(require_administrador_con_empresa),
 ) -> ResumenReporteOut:
     try:
         return ReportesService(db).resumen(fecha_desde, fecha_hasta, sucursal_id, actor.empresa_id)
@@ -89,7 +101,7 @@ def obtener_ventas(
     fecha_hasta: date | None = Query(None),
     sucursal_id: int | None = Query(None),
     db: Session = Depends(get_db),
-    actor: Usuario = Depends(require_administrador),
+    actor: Usuario = Depends(require_administrador_con_empresa),
 ) -> VentasReporteOut:
     try:
         return ReportesService(db).ventas(fecha_desde, fecha_hasta, sucursal_id, actor.empresa_id)
@@ -103,7 +115,7 @@ def obtener_ventas(
 def obtener_inventario(
     sucursal_id: int | None = Query(None),
     db: Session = Depends(get_db),
-    actor: Usuario = Depends(require_administrador),
+    actor: Usuario = Depends(require_administrador_con_empresa),
 ) -> InventarioReporteOut:
     try:
         return ReportesService(db).inventario(sucursal_id, actor.empresa_id)
@@ -117,7 +129,7 @@ def obtener_reservas(
     fecha_hasta: date | None = Query(None),
     sucursal_id: int | None = Query(None),
     db: Session = Depends(get_db),
-    actor: Usuario = Depends(require_administrador),
+    actor: Usuario = Depends(require_administrador_con_empresa),
 ) -> ReservasReporteOut:
     try:
         return ReportesService(db).reservas(fecha_desde, fecha_hasta, sucursal_id, actor.empresa_id)
@@ -133,7 +145,7 @@ def obtener_productos_mas_vendidos(
     fecha_hasta: date | None = Query(None),
     sucursal_id: int | None = Query(None),
     db: Session = Depends(get_db),
-    actor: Usuario = Depends(require_administrador),
+    actor: Usuario = Depends(require_administrador_con_empresa),
 ) -> ProductosMasVendidosReporteOut:
     try:
         return ReportesService(db).productos_mas_vendidos(fecha_desde, fecha_hasta, sucursal_id, actor.empresa_id)
@@ -147,14 +159,15 @@ def obtener_productos_mas_vendidos(
 def consulta_inteligente(
     payload: ConsultaInteligenteRequest,
     db: Session = Depends(get_db),
-    actor: Usuario = Depends(require_administrador),
+    actor: Usuario = Depends(require_administrador_con_empresa),
 ) -> ConsultaInteligenteResponse:
     try:
         # CU05: Validar que la empresa del usuario tenga acceso a reportes generativos con IA.
         # Esta validación es obligatoria en backend para proteger la funcionalidad.
-        if actor.empresa_id:
-            capacidades = CapacidadesEmpresa(db, actor.empresa_id)
-            capacidades.validar_acceso_a("reportes_generativos_ia")
+        # El tenant ya está garantizado por require_administrador_con_empresa:
+        # la validación del plan no se puede omitir con empresa_id nulo.
+        capacidades = CapacidadesEmpresa(db, actor.empresa_id)
+        capacidades.validar_acceso_a("reportes_generativos_ia")
 
         return ConsultaInteligenteService(db, actor.empresa_id).consultar(payload)
     except FuncionalidadNoHabilitadaError as exc:

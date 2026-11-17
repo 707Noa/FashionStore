@@ -130,6 +130,79 @@ class FiltrosResueltosOut(BaseModel):
     fecha_hasta: date | None
 
 
+# --- Especificación estructurada del reporte (la IA SOLO la propone; FastAPI
+# la valida con este modelo y nunca ejecuta nada fuera de lo que describe).
+
+class VentanaRelativa(BaseModel):
+    """"últimos N dias/semanas/meses/anios" -- se resuelve en Python."""
+
+    cantidad: int = Field(ge=1, le=120)
+    unidad: Literal["dias", "semanas", "meses", "anios"]
+
+
+class EspecificacionReporte(BaseModel):
+    intencion: str | None = None
+    metrica: Literal["unidades", "ingresos"] = "unidades"
+    agrupacion: Literal["sucursal", "categoria"] | None = None
+    granularidad: Literal["semana", "mes"] | None = None
+    limite: int | None = Field(default=None, ge=1, le=50)
+    # "por_grupo": TOP N dentro de CADA grupo. "global": TOP N global y luego
+    # desglose por grupo. None -> por_grupo cuando hay agrupación.
+    alcance_ranking: Literal["por_grupo", "global"] | None = None
+    orden: Literal["desc", "asc"] = "desc"
+    ventana: VentanaRelativa | None = None
+    categoria: str | None = None
+    ambiguo: bool = False
+    aclaracion: str | None = None
+
+
+class FilaReporteOut(BaseModel):
+    posicion: int | None = None
+    etiqueta: str
+    id: int | None = None
+    # None cuando la métrica no aplica al tipo de reporte (p. ej. unidades en
+    # la serie temporal de ventas) -- nunca se rellena con ceros inventados.
+    unidades: int | None = None
+    ingresos: float
+    ventas: int | None = None
+
+
+class GrupoReporteOut(BaseModel):
+    id: int | None
+    nombre: str
+    filas: list[FilaReporteOut]
+    # Total de las filas mostradas.
+    total_unidades: int | None = None
+    total_ingresos: float
+    # Total de TODO lo vendido por el grupo en el periodo (aunque el TOP N
+    # solo muestre una parte).
+    total_grupo_unidades: int | None = None
+    total_grupo_ingresos: float | None = None
+
+
+class PeriodoReporteOut(BaseModel):
+    fecha_desde: date | None
+    fecha_hasta: date | None
+    descripcion: str
+
+
+class ReporteAgrupadoOut(BaseModel):
+    tipo: Literal["ranking_por_grupo", "ranking_global_desglosado", "serie_por_grupo"]
+    titulo: str
+    metrica: Literal["unidades", "ingresos"]
+    agrupacion: str
+    limite: int | None
+    orden: Literal["desc", "asc"]
+    granularidad: str | None = None
+    periodo: PeriodoReporteOut
+    filtros_aplicados: list[str]
+    supuestos: list[str]
+    grupos: list[GrupoReporteOut]
+    total_unidades: int | None = None
+    total_ingresos: float
+    grafico: Literal["barras_por_grupo", "lineas_por_grupo"]
+
+
 class ConsultaInteligenteResponse(BaseModel):
     # False cuando Gemini no está disponible, la intención no se reconoció,
     # o la sucursal mencionada no existe -- en esos casos `filtros`/`datos`
@@ -148,3 +221,10 @@ class ConsultaInteligenteResponse(BaseModel):
         | ProductosMasVendidosReporteOut
         | None
     )
+    # Reporte dinámico (agrupación / TOP por grupo / serie). None en las
+    # consultas simples, que siguen resolviéndose con `datos` como antes.
+    reporte_agrupado: ReporteAgrupadoOut | None = None
+    especificacion: EspecificacionReporte | None = None
+    # True cuando la consulta es ambigua y `resumen` contiene la pregunta de
+    # aclaración -- no se ejecuta ninguna consulta de datos.
+    requiere_aclaracion: bool = False

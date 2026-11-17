@@ -561,3 +561,52 @@
     }
   }
 }
+
+// Reporte dinámico de la consulta inteligente (tabla por sucursal + gráfico).
+.reporte-dinamico {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.reporte-dinamico__titulo { margin: 0; font-size: 1.05rem; }
+.reporte-dinamico__periodo,
+.reporte-dinamico__supuesto,
+.reporte-dinamico__vacio,
+.reporte-dinamico__total {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.reporte-dinamico__supuesto,
+.reporte-dinamico__vacio { opacity: 0.8; }
+.reporte-dinamico__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  li {
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    font-size: 0.8rem;
+    opacity: 0.85;
+  }
+}
+.reporte-dinamico__grupo {
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 10px;
+  padding: 12px;
+  overflow-x: auto;
+  h4 { margin: 0 0 8px; }
+}
+.reporte-dinamico__tabla {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(128, 128, 128, 0.2); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  tfoot td { font-weight: 600; }
+}
+.reporte-dinamico__total-grupo td { font-weight: 400 !important; opacity: 0.8; }
