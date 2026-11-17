@@ -122,6 +122,24 @@ try:
     db.flush()
     print(f"[OK] Clientes: {count_clientes}")
 
+    # === CREAR CAJERO PARA DEVOLUCIONES ===
+    correo_cajero = "cajero_demo@fashionstore.demo"
+    cajero = db.query(Usuario).filter_by(correo=correo_cajero).first()
+
+    if not cajero:
+        cajero = Usuario(
+            empresa_id=EMPRESA_ID,
+            nombre="Cajero Demo",
+            correo=correo_cajero,
+            password_hash="demo_password_hash",
+            rol=RolUsuario.CAJERO
+        )
+        db.add(cajero)
+        db.flush()
+        print(f"[OK] Cajero creado: {cajero.id}")
+    else:
+        print(f"[OK] Cajero existe: {cajero.id}")
+
     # === CREAR RESERVAS ===
     count_reservas = 0
     count_reserva_detalles = 0
@@ -190,7 +208,7 @@ try:
                 variante_original_id=venta_detalle.producto_variante_id,
                 tipo=tipo_op,
                 cantidad=min(randint(1, venta_detalle.cantidad), venta_detalle.cantidad),
-                cajero_id=None,
+                cajero_id=cajero.id,
                 sucursal_id=db.query(Venta).filter_by(id=venta_detalle.venta_id).first().sucursal_id
             )
 
