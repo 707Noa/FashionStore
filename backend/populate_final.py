@@ -19,7 +19,7 @@ if "DATABASE_URL" not in os.environ:
     print("[CRITICAL] Cannot proceed without explicit database configuration.")
     sys.exit(1)
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, date
 from decimal import Decimal
 from random import randint, choice, uniform
 
@@ -37,10 +37,6 @@ from modules.P1_SucursalesYCatalogos.Models.talla import Talla
 from modules.P1_SucursalesYCatalogos.Models.color import Color
 from modules.P1_SucursalesYCatalogos.Models.producto_variante import ProductoVariante
 from modules.P1_SucursalesYCatalogos.Models.stock_sucursal import StockSucursal
-from modules.P1_SucursalesYCatalogos.Models.recepcion_mercaderia import RecepcionMercaderia
-from modules.P1_SucursalesYCatalogos.Models.detalle_recepcion_mercaderia import DetalleRecepcionMercaderia
-from modules.P5_ComprasVentasYPagos.Models.venta import Venta
-from modules.P5_ComprasVentasYPagos.Models.pago import Pago
 
 EMPRESA_ID = 1
 BASE_DATE = datetime(2026, 1, 1)
@@ -230,56 +226,26 @@ try:
     for producto in productos:
         talla_sel = tallas[randint(0, len(tallas)-1)]
         color_sel = colores[randint(0, len(colores)-1)]
-        existing = db.query(ProductoVariante).filter_by(empresa_id=EMPRESA_ID, producto_id=producto.id, talla_id=talla_sel.id, color_id=color_sel.id).first()
+        existing = db.query(ProductoVariante).filter_by(producto_id=producto.id, talla_id=talla_sel.id, color_id=color_sel.id).first()
         if not existing:
-            variante = ProductoVariante(empresa_id=EMPRESA_ID, producto_id=producto.id, talla_id=talla_sel.id, color_id=color_sel.id, is_active=True)
+            variante = ProductoVariante(producto_id=producto.id, talla_id=talla_sel.id, color_id=color_sel.id, is_active=True)
             db.add(variante)
             count_variantes += 1
     db.flush()
     print(f"[OK] Variantes: {count_variantes}")
 
-    variantes = db.query(ProductoVariante).filter_by(empresa_id=EMPRESA_ID).all()
+    variantes = db.query(ProductoVariante).all()
     count_stock = 0
     for variante in variantes:
         for sucursal in sucursales:
-            existing = db.query(StockSucursal).filter_by(empresa_id=EMPRESA_ID, sucursal_id=sucursal.id, producto_variante_id=variante.id).first()
+            existing = db.query(StockSucursal).filter_by(sucursal_id=sucursal.id, producto_variante_id=variante.id).first()
             if not existing:
-                stock = StockSucursal(empresa_id=EMPRESA_ID, sucursal_id=sucursal.id, producto_variante_id=variante.id, cantidad_disponible=randint(5, 100), cantidad_reservada=randint(0, 10))
+                stock = StockSucursal(sucursal_id=sucursal.id, producto_variante_id=variante.id, cantidad=randint(5, 100), stock_reservado=randint(0, 10))
                 db.add(stock)
                 count_stock += 1
     db.flush()
     print(f"[OK] Stock: {count_stock}")
 
-    count_recepciones = 0
-    count_detalles = 0
-    for i in range(15):
-        days_offset = randint(0, 228)
-        fecha = BASE_DATE + timedelta(days=days_offset)
-        existing = db.query(RecepcionMercaderia).filter_by(empresa_id=EMPRESA_ID, numero_referencia=f"REC-{i+1:04d}").first()
-        if not existing:
-            recepcion = RecepcionMercaderia(empresa_id=EMPRESA_ID, sucursal_id=choice(sucursales).id, proveedor_id=choice(proveedores).id, numero_referencia=f"REC-{i+1:04d}", fecha_recepcion=fecha, estado="completada")
-            db.add(recepcion)
-            for _ in range(randint(3, 8)):
-                detalle = DetalleRecepcionMercaderia(recepcion_mercaderia_id=recepcion.id, producto_variante_id=choice(variantes).id, cantidad_recibida=randint(10, 50), precio_unitario=Decimal(str(round(uniform(10, 150), 2))))
-                db.add(detalle)
-                count_detalles += 1
-            count_recepciones += 1
-    db.flush()
-    print(f"[OK] Recepciones: {count_recepciones}, Detalles: {count_detalles}")
-
-    count_ventas = 0
-    count_pagos = 0
-    for i in range(60):
-        days_offset = randint(50, 228)
-        fecha = BASE_DATE + timedelta(days=days_offset)
-        venta = Venta(empresa_id=EMPRESA_ID, sucursal_id=choice(sucursales).id, numero_venta=f"VENTA-{i+1:05d}", fecha_venta=fecha, estado="completada", total=Decimal(str(round(uniform(50, 500), 2))))
-        db.add(venta)
-        count_ventas += 1
-        pago = Pago(venta_id=venta.id, empresa_id=EMPRESA_ID, monto=venta.total, metodo_pago=choice(["efectivo", "tarjeta", "transferencia"]), estado="confirmado", fecha_pago=fecha)
-        db.add(pago)
-        count_pagos += 1
-    db.flush()
-    print(f"[OK] Ventas: {count_ventas}, Pagos: {count_pagos}")
 
     trans.commit()
     print("\n[SUCCESS] Poblamiento completado")
@@ -295,10 +261,6 @@ try:
     print(f"  Productos: {count_productos}")
     print(f"  Variantes: {count_variantes}")
     print(f"  Stock: {count_stock}")
-    print(f"  Recepciones: {count_recepciones}")
-    print(f"  Detalles Recepciones: {count_detalles}")
-    print(f"  Ventas: {count_ventas}")
-    print(f"  Pagos: {count_pagos}")
 
 except Exception as e:
     trans.rollback()
