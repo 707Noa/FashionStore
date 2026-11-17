@@ -24,6 +24,7 @@ from random import randint, choice, uniform
 
 from app.db.session import SessionLocal
 from modules.P7_GestionSaaSySuscripciones.Models.empresa import Empresa
+from modules.P2_UsuariosYAccesos.Models.usuario import Usuario
 from modules.P1_SucursalesYCatalogos.Models.sucursal import Sucursal
 from modules.P1_SucursalesYCatalogos.Models.producto_variante import ProductoVariante
 from modules.P4_ReservasYAtencion.Models.reserva import Reserva, ReservaDetalle, EstadoReserva, calcular_estado_general
