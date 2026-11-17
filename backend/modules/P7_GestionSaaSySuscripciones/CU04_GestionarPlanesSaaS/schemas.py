@@ -13,7 +13,7 @@ class PlanBase(BaseModel):
     slug: str = Field(..., min_length=1, max_length=50)
     descripcion: str = Field(..., min_length=1)
     precio: Decimal = Field(..., ge=Decimal("0.00"))
-    duracion_dias: int = Field(..., ge=1)
+    duracion_dias: int = Field(default=30, ge=1)
     permite_prueba_gratuita: bool = False
     duracion_prueba_dias: int | None = None
     limite_sucursales: int = Field(..., ge=1)

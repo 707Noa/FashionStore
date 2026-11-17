@@ -51,11 +51,21 @@ class PlanesService:
         if self._repo.existe_slug(datos.slug):
             raise PlanSlugDuplicadoError
 
+        # Validar que si tiene prueba gratuita, duracion_prueba_dias sea válido
+        if datos.permite_prueba_gratuita and datos.duracion_prueba_dias is not None:
+            if datos.duracion_prueba_dias < 1:
+                raise DatosInvalidosError(
+                    "duracion_prueba_dias debe ser mayor a 0 cuando permite_prueba_gratuita es True"
+                )
+
         plan = Plan(
             nombre=datos.nombre.strip(),
             slug=datos.slug.strip().lower(),
             descripcion=datos.descripcion.strip(),
             precio=datos.precio,
+            duracion_dias=datos.duracion_dias,
+            permite_prueba_gratuita=datos.permite_prueba_gratuita,
+            duracion_prueba_dias=datos.duracion_prueba_dias,
             limite_sucursales=datos.limite_sucursales,
             limite_usuarios=datos.limite_usuarios,
             gestion_productos=datos.gestion_productos,
