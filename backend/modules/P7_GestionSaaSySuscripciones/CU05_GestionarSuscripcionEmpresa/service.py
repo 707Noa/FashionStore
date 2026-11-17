@@ -77,7 +77,7 @@ class CapacidadesEmpresa:
         if not self.tiene_suscripcion_activa():
             return False
 
-        if not self._plan:
+        if not self._plan or not self._plan.is_active:
             return False
 
         funcionalidad_map = {
