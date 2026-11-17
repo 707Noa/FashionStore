@@ -19,7 +19,7 @@ if "DATABASE_URL" not in os.environ:
     print("[CRITICAL] Cannot proceed without explicit database configuration.")
     sys.exit(1)
 
-from datetime import datetime, date
+from datetime import datetime, timedelta, date
 from decimal import Decimal
 from random import randint, choice, uniform
 
@@ -37,6 +37,11 @@ from modules.P1_SucursalesYCatalogos.Models.talla import Talla
 from modules.P1_SucursalesYCatalogos.Models.color import Color
 from modules.P1_SucursalesYCatalogos.Models.producto_variante import ProductoVariante
 from modules.P1_SucursalesYCatalogos.Models.stock_sucursal import StockSucursal
+from modules.P1_SucursalesYCatalogos.Models.recepcion_mercaderia import RecepcionMercaderia
+from modules.P1_SucursalesYCatalogos.Models.detalle_recepcion_mercaderia import DetalleRecepcionMercaderia
+from modules.P4_ReservasYAtencion.Models.reserva import Reserva
+from modules.P5_ComprasVentasYPagos.Models.venta import Venta, VentaDetalle, TipoVenta, EstadoVenta
+from modules.P5_ComprasVentasYPagos.Models.pago import Pago, ProveedorPago, EstadoPago
 
 EMPRESA_ID = 1
 BASE_DATE = datetime(2026, 1, 1)
@@ -53,9 +58,10 @@ print("This script will populate:")
 print("  - 5 cities, 3 branches, 8 suppliers")
 print("  - 10 categories, 7 sizes, 10 colors")
 print("  - 3 seasons, 3 collections")
-print("  - 40 products, 120+ variants")
-print("  - 1000+ inventory records")
-print("  - 15 receipts, 60 sales, 60 payments")
+print("  - 40 products, 120+ variants, 1000+ inventory records")
+print("  - 15 recepciones + 105 detalles")
+print("  - 60 ventas + 150+ detalles de venta")
+print("  - 60 pagos")
 print("")
 print("All records will belong to enterprise_id=1")
 print("Existing records will NOT be duplicated")
@@ -223,9 +229,9 @@ try:
     print(f"[OK] Productos: {count_productos}")
 
     count_variantes = 0
-    for producto in productos:
-        talla_sel = tallas[randint(0, len(tallas)-1)]
-        color_sel = colores[randint(0, len(colores)-1)]
+    for idx, producto in enumerate(productos):
+        talla_sel = tallas[idx % len(tallas)]
+        color_sel = colores[idx % len(colores)]
         existing = db.query(ProductoVariante).filter_by(producto_id=producto.id, talla_id=talla_sel.id, color_id=color_sel.id).first()
         if not existing:
             variante = ProductoVariante(producto_id=producto.id, talla_id=talla_sel.id, color_id=color_sel.id, is_active=True)
@@ -246,6 +252,124 @@ try:
     db.flush()
     print(f"[OK] Stock: {count_stock}")
 
+    from modules.P2_UsuariosYAccesos.Models.usuario import Usuario
+    usuario_valido = db.query(Usuario).filter_by(id=1, empresa_id=EMPRESA_ID).first()
+    if not usuario_valido:
+        raise ValueError(f"Usuario id=1 no existe o no pertenece a empresa_id={EMPRESA_ID}")
+    print(f"[OK] Usuario válido: id=1")
+
+    count_recepciones = 0
+    count_detalles_recepcion = 0
+    for i in range(1, 16):
+        numero_ref = f"REC-{i:04d}"
+        observacion = f"Demo recepción {numero_ref}"
+        existing_rec = db.query(RecepcionMercaderia).filter_by(observacion=observacion).first()
+        if not existing_rec:
+            days_offset = randint(0, 180)
+            fecha = BASE_DATE + timedelta(days=days_offset)
+            recepcion = RecepcionMercaderia(
+                proveedor_id=choice(proveedores).id,
+                sucursal_id=choice(sucursales).id,
+                usuario_id=1,
+                fecha_hora=fecha,
+                observacion=observacion
+            )
+            db.add(recepcion)
+            db.flush()
+            count_recepciones += 1
+
+            for j in range(randint(3, 8)):
+                variante_sel = choice(variantes)
+                existing_det = db.query(DetalleRecepcionMercaderia).filter_by(
+                    recepcion_id=recepcion.id,
+                    producto_variante_id=variante_sel.id
+                ).first()
+                if not existing_det:
+                    detalle = DetalleRecepcionMercaderia(
+                        recepcion_id=recepcion.id,
+                        producto_variante_id=variante_sel.id,
+                        cantidad_recibida=randint(10, 50)
+                    )
+                    db.add(detalle)
+                    count_detalles_recepcion += 1
+    db.flush()
+    print(f"[OK] Recepciones: {count_recepciones}, Detalles: {count_detalles_recepcion}")
+
+    count_ventas = 0
+    count_detalles_venta = 0
+    for i in range(1, 61):
+        codigo_venta = f"VT-{i:06d}"
+        existing_venta = db.query(Venta).filter_by(codigo_venta=codigo_venta).first()
+        if not existing_venta:
+            days_offset = randint(50, 180)
+            fecha = BASE_DATE + timedelta(days=days_offset)
+            if fecha.date() > date(2026, 8, 17):
+                fecha = datetime.combine(date(2026, 8, 17), fecha.time())
+
+            venta = Venta(
+                empresa_id=EMPRESA_ID,
+                codigo_venta=codigo_venta,
+                cliente_id=None,
+                sucursal_id=choice(sucursales).id,
+                tipo=TipoVenta.DIGITAL,
+                estado=EstadoVenta.PENDIENTE_PAGO,
+                total=Decimal("0"),
+                cajero_id=None
+            )
+            db.add(venta)
+            db.flush()
+
+            total_venta = Decimal("0")
+            for j in range(randint(1, 3)):
+                variante_sel = choice(variantes)
+                cantidad_det = randint(1, 5)
+                precio_unitario = Decimal(str(round(uniform(20, 200), 2)))
+                subtotal_det = precio_unitario * cantidad_det
+
+                existing_det_venta = db.query(VentaDetalle).filter_by(
+                    venta_id=venta.id,
+                    producto_variante_id=variante_sel.id
+                ).first()
+                if not existing_det_venta:
+                    detalle = VentaDetalle(
+                        venta_id=venta.id,
+                        producto_variante_id=variante_sel.id,
+                        cantidad=cantidad_det,
+                        precio_unitario=precio_unitario,
+                        subtotal=subtotal_det,
+                        carrito_item_id=None
+                    )
+                    db.add(detalle)
+                    total_venta += subtotal_det
+                    count_detalles_venta += 1
+
+            venta.total = total_venta
+            count_ventas += 1
+    db.flush()
+    print(f"[OK] Ventas: {count_ventas}, Detalles: {count_detalles_venta}")
+
+    count_pagos = 0
+    ventas_todas = db.query(Venta).filter_by(empresa_id=EMPRESA_ID).all()
+    for venta in ventas_todas:
+        existing_pago = db.query(Pago).filter_by(venta_id=venta.id).first()
+        if not existing_pago:
+            pago = Pago(
+                venta_id=venta.id,
+                proveedor=ProveedorPago.STRIPE,
+                stripe_checkout_session_id=None,
+                stripe_payment_intent_id=None,
+                monto=venta.total,
+                estado=EstadoPago.PENDIENTE,
+                cajero_id=None,
+                monto_recibido=None,
+                cambio=None,
+                tipo_tarjeta=None,
+                referencia=None
+            )
+            db.add(pago)
+            count_pagos += 1
+    db.flush()
+    print(f"[OK] Pagos: {count_pagos}")
 
     trans.commit()
     print("\n[SUCCESS] Poblamiento completado")
@@ -261,6 +385,11 @@ try:
     print(f"  Productos: {count_productos}")
     print(f"  Variantes: {count_variantes}")
     print(f"  Stock: {count_stock}")
+    print(f"  Recepciones: {count_recepciones}")
+    print(f"  Detalles Recepción: {count_detalles_recepcion}")
+    print(f"  Ventas: {count_ventas}")
+    print(f"  Detalles Venta: {count_detalles_venta}")
+    print(f"  Pagos: {count_pagos}")
 
 except Exception as e:
     trans.rollback()
